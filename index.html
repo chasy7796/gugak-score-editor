@@ -1,40 +1,39 @@
+
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>국악 악보 인식 및 MIDI</title>
+<title>국악 악보 편집기</title>
 <style>
 *{box-sizing:border-box}
-body{font-family:system-ui,sans-serif;max-width:900px;margin:auto;padding:14px;background:#f4f7fb;color:#182230}
-.panel{background:white;border:1px solid #dbe2ec;border-radius:12px;padding:14px;margin:12px 0}
-button,input,select{font:inherit;padding:9px;border:1px solid #c5cfdd;border-radius:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:900px;margin:auto;padding:14px;background:#f4f6fa;color:#172033}
+.panel{background:white;border:1px solid #dce2eb;border-radius:12px;padding:14px;margin:12px 0}
+button,input,select{font:inherit;padding:9px;border:1px solid #cbd3df;border-radius:8px}
 button{cursor:pointer}
-button:disabled{opacity:.5}
 .primary{background:#155bd7;color:white;border-color:#155bd7}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-#preview{display:block;max-width:100%;max-height:500px;margin:12px auto}
-#status{color:#155bd7;min-height:24px;overflow-wrap:anywhere;line-height:1.5}
-table{width:100%;border-collapse:collapse}
-td,th{text-align:left;padding:7px;border-bottom:1px solid #ddd}
-td input,td select{max-width:100%;width:100%}
-.small{font-size:13px;color:#596579;line-height:1.5}
-#audioState{font-weight:600;color:#182230}
+.small{font-size:13px;color:#5d687b;line-height:1.5}
+#status{color:#155bd7;overflow-wrap:anywhere;line-height:1.6}
+#preview{display:block;max-width:100%;max-height:450px;margin:12px auto}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:7px;border-bottom:1px solid #e2e6ed}
+td input,td select{width:100%;min-width:65px}
 </style>
 </head>
 <body>
-<h2>🥁 국악 악보 인식 · MIDI</h2>
-<p class="small">
-JPG/PNG/WebP 악보를 올리고 인식 버튼을 누르세요.
-인식 결과는 후보이므로 실제 기호와 박자를 확인해 주세요.
-</p>
+<h2>🥁 국악 악보 편집기</h2>
+<p class="small">악보 이미지 인식 · 장구 음원 업로드 · 악기 소리 테스트 · MIDI 저장</p>
 
 <section class="panel">
+  <h3>1. 악보 이미지</h3>
   <div class="row">
-    <input id="file" type="file" accept="image/jpeg,image/png,image/webp">
+    <input id="imageFile" type="file" accept="image/jpeg,image/png,image/webp">
     <button id="recognize" class="primary">악보 인식</button>
   </div>
+  <img id="preview" hidden alt="악보 미리보기">
 
+  <h3>2. 재생 설정</h3>
   <div class="row">
     <label>악기
       <select id="instrument">
@@ -48,50 +47,43 @@ JPG/PNG/WebP 악보를 올리고 인식 버튼을 누르세요.
       </select>
     </label>
     <label>빠르기
-      <input id="tempo" type="number" min="30" max="240" value="100" style="width:75px">
-      BPM
+      <input id="tempo" type="number" min="30" max="240" value="100" style="width:75px"> BPM
     </label>
   </div>
 
-  <div class="row">
-    <label>실제 장구 음원 선택 (MP3/WAV/OGG)
-      <input id="jangguSample" type="file" accept="audio/*">
-    </label>
-    <a href="https://gongu.copyright.or.kr/gongu/wrt/wrt/view.do?menuNo=200020&wrtSn=13265810" target="_blank" rel="noopener">장구 음원 페이지</a>
-  </div>
+  <h3>3. 장구 음원 업로드</h3>
+  <input id="jangguSample" type="file"
+    accept=".mp3,.mpeg,.mpga,.wav,.wave,.ogg,.oga,.m4a,.aac,audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/aac,audio/*">
+  <p class="small">MP3, WAV, OGG, M4A, AAC 파일을 선택할 수 있어. iPhone Safari가 파일을 해독하지 못하는 경우 WAV 파일로 변환해 다시 시도해 줘.</p>
 
-  <p class="small">
-    장구 음원을 선택하면 해당 음원을 사용합니다.
-    선택하지 않으면 기본 합성음을 사용합니다.
-  </p>
-
-  <img id="preview" hidden alt="악보 미리보기">
-  <div id="status" aria-live="polite">악보 이미지를 선택하거나 소리 테스트를 시작하세요.</div>
-  <p class="small">오디오 상태: <span id="audioState">아직 초기화되지 않음</span></p>
+  <p id="status" aria-live="polite">준비되었습니다.</p>
+  <p class="small">오디오 상태: <strong id="audioState">초기화 전</strong></p>
 </section>
 
 <section class="panel">
+  <h3>4. 소리 테스트 및 재생</h3>
   <div class="row">
-    <button id="play" class="primary">▶ 재생</button>
-    <button id="stop">■ 정지</button>
     <button id="testTone" class="primary">🔔 기본음 880Hz 테스트</button>
-    <button id="testSound">🥁 선택 악기 테스트</button>
-    <button id="midi">MIDI 저장</button>
-    <button id="add">＋ 음표 추가</button>
+    <button id="testInstrument">🥁 선택 악기 테스트</button>
   </div>
+  <div class="row">
+    <button id="play" class="primary">▶ 악보 재생</button>
+    <button id="stop">■ 정지</button>
+    <button id="add">＋ 음표 추가</button>
+    <button id="saveMidi">MIDI 저장</button>
+  </div>
+  <p class="small">iPhone에서는 버튼을 직접 눌러 오디오를 시작해야 해. 무음이면 기기 음량과 출력 장치도 확인해 줘.</p>
+</section>
 
-  <p class="small">
-    먼저 880Hz 기본음 테스트를 눌러 브라우저의 오디오 출력을 확인하세요.
-    그다음 선택 악기 테스트를 누르면 현재 악기의 소리를 확인할 수 있습니다.
-  </p>
-
+<section class="panel">
+  <h3>5. 음표 편집</h3>
   <div style="overflow-x:auto">
     <table>
       <thead>
         <tr><th>#</th><th>위치</th><th>악기</th><th>길이(박)</th><th>삭제</th></tr>
       </thead>
-      <tbody id="rows">
-        <tr><td colspan="5">인식 결과가 없습니다.</td></tr>
+      <tbody id="notesTable">
+        <tr><td colspan="5">음표가 없습니다. 음표를 추가하거나 악보를 인식하세요.</td></tr>
       </tbody>
     </table>
   </div>
@@ -102,164 +94,259 @@ JPG/PNG/WebP 악보를 올리고 인식 버튼을 누르세요.
 'use strict';
 
 const $ = id => document.getElementById(id);
-const file = $('file');
-const preview = $('preview');
 const status = $('status');
 const audioState = $('audioState');
-const rows = $('rows');
+const table = $('notesTable');
+const preview = $('preview');
 
-let img = null;
-let notes = [];
 let audio = null;
-let playbackNodes = [];
-let imageUrl = null;
+let image = null;
+let imageURL = null;
 let jangguBuffer = null;
+let notes = [];
+let activeNodes = [];
 
 const instruments = {
-  buk:     {label:'북',gm:36,f:95},
-  janggu:  {label:'장구',gm:38,f:150},
-  jing:    {label:'징',gm:49,f:900},
-  kkwaeng: {label:'꽹과리',gm:56,f:1450},
-  wood:    {label:'목탁',gm:76,f:550},
-  snare:   {label:'스네어',gm:40,f:190},
-  hat:     {label:'하이햇',gm:42,f:7000}
+  buk:     {name:'북', gm:36, freq:95},
+  janggu:  {name:'장구', gm:38, freq:150},
+  jing:    {name:'징', gm:49, freq:900},
+  kkwaeng: {name:'꽹과리', gm:56, freq:1450},
+  wood:    {name:'목탁', gm:76, freq:550},
+  snare:   {name:'스네어', gm:40, freq:190},
+  hat:     {name:'하이햇', gm:42, freq:7000}
 };
 
-/* 이미지 업로드 */
-file.addEventListener('change', () => {
-  const f = file.files && file.files[0];
-  img = null;
-  notes = [];
-  render();
-  preview.hidden = true;
-
-  if (imageUrl) {
-    URL.revokeObjectURL(imageUrl);
-    imageUrl = null;
+function getAudio() {
+  if (!audio) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      throw new Error('이 브라우저는 오디오 재생을 지원하지 않습니다.');
+    }
+    audio = new AudioContextClass();
+    audio.addEventListener('statechange', updateAudioState);
   }
+  updateAudioState();
+  return audio;
+}
+
+function updateAudioState() {
+  audioState.textContent = audio
+    ? `${audio.state} · ${audio.sampleRate}Hz`
+    : '초기화 전';
+}
+
+async function resumeAudio() {
+  const a = getAudio();
+  if (a.state !== 'running') await a.resume();
+  updateAudioState();
+  if (a.state !== 'running') {
+    throw new Error('오디오가 실행되지 않습니다: ' + a.state);
+  }
+  return a;
+}
+
+function stopSounds() {
+  for (const node of activeNodes) {
+    try { node.stop(); } catch (_) {}
+    try { node.disconnect(); } catch (_) {}
+  }
+  activeNodes = [];
+}
+
+function playToneNow() {
+  const a = getAudio();
+  const osc = a.createOscillator();
+  const gain = a.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, a.currentTime);
+  gain.gain.setValueAtTime(0.0001, a.currentTime);
+  gain.gain.linearRampToValueAtTime(0.22, a.currentTime + 0.025);
+  gain.gain.setValueAtTime(0.22, a.currentTime + 0.30);
+  gain.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.50);
+
+  osc.connect(gain);
+  gain.connect(a.destination);
+  osc.start(a.currentTime);
+  osc.stop(a.currentTime + 0.52);
+  activeNodes.push(osc, gain);
+}
+
+function playHit(instrument, when) {
+  const a = getAudio();
+  const cfg = instruments[instrument] || instruments.buk;
+
+  if (instrument === 'janggu' && jangguBuffer) {
+    const source = a.createBufferSource();
+    const gain = a.createGain();
+    source.buffer = jangguBuffer;
+    gain.gain.setValueAtTime(0.8, when);
+    gain.gain.setValueAtTime(0.8, when + 0.03);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001, when + Math.max(0.08, jangguBuffer.duration)
+    );
+    source.connect(gain);
+    gain.connect(a.destination);
+    source.start(when);
+    activeNodes.push(source, gain);
+    return;
+  }
+
+  const osc = a.createOscillator();
+  const gain = a.createGain();
+  const isMetal = ['jing','kkwaeng','hat'].includes(instrument);
+
+  osc.type = isMetal ? 'sawtooth' : 'triangle';
+  osc.frequency.setValueAtTime(cfg.freq, when);
+
+  if (['buk','janggu','snare'].includes(instrument)) {
+    osc.frequency.exponentialRampToValueAtTime(
+      instrument === 'snare' ? 100 : 48, when + 0.12
+    );
+  }
+
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.linearRampToValueAtTime(
+    ['jing','kkwaeng'].includes(instrument) ? 0.22 : 0.55,
+    when + 0.008
+  );
+  gain.gain.exponentialRampToValueAtTime(
+    0.0001, when + (isMetal ? 0.42 : 0.20)
+  );
+
+  osc.connect(gain);
+  gain.connect(a.destination);
+  osc.start(when);
+  osc.stop(when + 0.45);
+  activeNodes.push(osc, gain);
+
+  // 타악기의 어택을 표현하는 짧은 노이즈
+  const length = Math.floor(a.sampleRate * 0.04);
+  const buffer = a.createBuffer(1, length, a.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  }
+  const noise = a.createBufferSource();
+  const noiseGain = a.createGain();
+  noise.buffer = buffer;
+  noiseGain.gain.setValueAtTime(0.12, when);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.04);
+  noise.connect(noiseGain);
+  noiseGain.connect(a.destination);
+  noise.start(when);
+  activeNodes.push(noise, noiseGain);
+}
+
+$('testTone').addEventListener('click', async () => {
+  stopSounds();
+  try {
+    // 사용자 탭 이벤트 안에서 즉시 오디오를 생성
+    playToneNow();
+    await resumeAudio();
+    status.textContent = '880Hz 기본음을 재생했습니다. 소리가 들리지 않으면 기기 음량과 출력 장치를 확인하세요.';
+  } catch (e) {
+    status.textContent = '기본음 테스트 오류: ' + e.message;
+  }
+});
+
+$('testInstrument').addEventListener('click', async () => {
+  stopSounds();
+  try {
+    const a = await resumeAudio();
+    const inst = $('instrument').value;
+    playHit(inst, a.currentTime + 0.02);
+    status.textContent = instruments[inst].name + ' 소리 테스트를 실행했습니다.';
+  } catch (e) {
+    status.textContent = '악기 테스트 오류: ' + e.message;
+  }
+});
+
+// MP3 등 음원 파일 선택 및 디코딩
+$('jangguSample').addEventListener('change', async () => {
+  const input = $('jangguSample');
+  const f = input.files && input.files[0];
+  jangguBuffer = null;
 
   if (!f) {
-    status.textContent = '이미지 파일을 선택하세요.';
+    status.textContent = '선택된 음원 파일이 없습니다.';
     return;
   }
 
-  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
-    status.textContent = 'JPG, PNG 또는 WebP 파일만 사용할 수 있습니다.';
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  const allowed = [
+    'mp3','mpeg','mpga','wav','wave','ogg','oga','m4a','aac'
+  ];
+  const audioMime = /^audio\//i.test(f.type || '');
+
+  if (!allowed.includes(ext) && !audioMime) {
+    status.textContent = '지원하지 않는 파일입니다. MP3, WAV, OGG, M4A 또는 AAC 파일을 선택하세요.';
+    input.value = '';
     return;
   }
 
-  imageUrl = URL.createObjectURL(f);
-  const next = new Image();
+  if (f.size === 0) {
+    status.textContent = '파일 크기가 0바이트입니다.';
+    input.value = '';
+    return;
+  }
 
-  next.onload = () => {
-    img = next;
-    preview.src = imageUrl;
-    preview.hidden = false;
+  try {
+    status.textContent = '음원 불러오는 중: ' + f.name;
+    const a = getAudio();
+    const bytes = await f.arrayBuffer();
+    jangguBuffer = await a.decodeAudioData(bytes.slice(0));
+
     status.textContent =
-      `이미지 준비 완료: ${next.naturalWidth} × ${next.naturalHeight}. 인식 버튼을 눌러 주세요.`;
+      `음원 불러오기 성공: ${f.name} (${Math.round(f.size / 1024)}KB). ` +
+      '악기를 장구로 선택하고 테스트하세요.';
+  } catch (e) {
+    jangguBuffer = null;
+    status.textContent =
+      '음원 읽기 실패: ' + (e.message || String(e)) +
+      '. Safari가 이 파일 형식을 지원하지 않을 수 있습니다. WAV 파일로 변환해 다시 시도하세요.';
+  }
+});
+
+// 이미지 미리보기
+$('imageFile').addEventListener('change', () => {
+  const f = $('imageFile').files && $('imageFile').files[0];
+  image = null;
+  notes = [];
+  renderNotes();
+
+  if (imageURL) URL.revokeObjectURL(imageURL);
+  imageURL = null;
+  preview.hidden = true;
+
+  if (!f) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
+    status.textContent = 'JPG, PNG 또는 WebP 이미지를 선택하세요.';
+    return;
+  }
+
+  imageURL = URL.createObjectURL(f);
+  const im = new Image();
+
+  im.onload = () => {
+    image = im;
+    preview.src = imageURL;
+    preview.hidden = false;
+    status.textContent = '이미지가 준비되었습니다. 악보 인식 버튼을 누르세요.';
   };
 
-  next.onerror = () => {
+  im.onerror = () => {
     status.textContent = '이미지를 읽지 못했습니다. 다른 파일을 선택하세요.';
   };
 
-  next.src = imageUrl;
+  im.src = imageURL;
 });
 
-/* 결과 표 */
-function render() {
-  rows.replaceChildren();
-
-  if (!notes.length) {
-    const tr = document.createElement('tr');
-    const td = document.createElement('td');
-    td.colSpan = 5;
-    td.textContent = '인식 결과가 없습니다.';
-    tr.append(td);
-    rows.append(tr);
-    return;
-  }
-
-  notes.forEach((n, i) => {
-    const tr = document.createElement('tr');
-
-    const num = document.createElement('td');
-    num.textContent = i + 1;
-    tr.append(num);
-
-    const posCell = document.createElement('td');
-    const pos = document.createElement('input');
-    pos.type = 'number';
-    pos.min = '0';
-    pos.step = '1';
-    pos.value = n.x;
-    pos.addEventListener('change', () => {
-      n.x = Math.max(0, Number(pos.value) || 0);
-    });
-    posCell.append(pos);
-    tr.append(posCell);
-
-    const instCell = document.createElement('td');
-    const inst = document.createElement('select');
-
-    Object.entries(instruments).forEach(([key, val]) => {
-      const op = document.createElement('option');
-      op.value = key;
-      op.textContent = val.label;
-      op.selected = n.inst === key;
-      inst.append(op);
-    });
-
-    inst.addEventListener('change', () => n.inst = inst.value);
-    instCell.append(inst);
-    tr.append(instCell);
-
-    const durCell = document.createElement('td');
-    const dur = document.createElement('select');
-
-    [0.25,0.5,1,1.5,2,3,4].forEach(v => {
-      const op = document.createElement('option');
-      op.value = v;
-      op.textContent = v;
-      op.selected = n.dur === v;
-      dur.append(op);
-    });
-
-    dur.addEventListener('change', () => n.dur = Number(dur.value));
-    durCell.append(dur);
-    tr.append(durCell);
-
-    const delCell = document.createElement('td');
-    const del = document.createElement('button');
-    del.textContent = '삭제';
-    del.addEventListener('click', () => {
-      notes.splice(i, 1);
-      render();
-    });
-    delCell.append(del);
-    tr.append(delCell);
-
-    rows.append(tr);
-  });
-}
-
-/*
- * 악보 이미지 분석:
- * 오선 5줄을 우선 찾고, 찾지 못하면 단선 후보를 탐색합니다.
- * 자동 인식 결과는 반드시 확인해 주세요.
- */
-function recognize(image) {
-  const maxW = 1200;
-  const maxH = 1600;
-  const scale = Math.min(
-    1,
-    maxW / image.naturalWidth,
-    maxH / image.naturalHeight
-  );
-
-  const w = Math.max(1, Math.round(image.naturalWidth * scale));
-  const h = Math.max(1, Math.round(image.naturalHeight * scale));
-
+// 간단한 이미지 분석: 가로선 주변의 어두운 덩어리를 음표 후보로 추출
+function recognizeImage(im) {
+  const scale = Math.min(1, 1200 / im.naturalWidth, 1600 / im.naturalHeight);
+  const w = Math.max(1, Math.round(im.naturalWidth * scale));
+  const h = Math.max(1, Math.round(im.naturalHeight * scale));
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -269,561 +356,176 @@ function recognize(image) {
 
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(image, 0, 0, w, h);
+  ctx.drawImage(im, 0, 0, w, h);
 
   const pixels = ctx.getImageData(0, 0, w, h).data;
   const gray = new Uint8Array(w * h);
-
   for (let p = 0, j = 0; p < pixels.length; p += 4, j++) {
     gray[j] = Math.round(
-      0.299 * pixels[p] +
-      0.587 * pixels[p + 1] +
-      0.114 * pixels[p + 2]
+      0.299 * pixels[p] + 0.587 * pixels[p+1] + 0.114 * pixels[p+2]
     );
   }
 
-  let best = null;
-  const thresholds = [180,205,150];
-
-  for (const threshold of thresholds) {
-    const binary = new Uint8Array(w * h);
-
-    for (let i = 0; i < gray.length; i++) {
-      binary[i] = gray[i] < threshold ? 1 : 0;
+  const binary = new Uint8Array(w * h);
+  const rowRatio = new Float32Array(h);
+  for (let y = 0; y < h; y++) {
+    let count = 0;
+    for (let x = 0; x < w; x++) {
+      const dark = gray[y*w+x] < 180;
+      binary[y*w+x] = dark ? 1 : 0;
+      if (dark) count++;
     }
-
-    const rowRatio = new Float32Array(h);
-
-    for (let y = 0; y < h; y++) {
-      let count = 0;
-      const off = y * w;
-      for (let x = 0; x < w; x++) count += binary[off + x];
-      rowRatio[y] = count / w;
-    }
-
-    const smooth = new Float32Array(h);
-
-    for (let y = 0; y < h; y++) {
-      let sum = 0;
-      let n = 0;
-
-      for (let dy = -1; dy <= 1; dy++) {
-        const yy = y + dy;
-        if (yy >= 0 && yy < h) {
-          sum += rowRatio[yy];
-          n++;
-        }
-      }
-      smooth[y] = sum / n;
-    }
-
-    const rowCandidates = [];
-    for (let y = 0; y < h; y++) {
-      if (smooth[y] >= 0.08) rowCandidates.push(y);
-    }
-
-    const rowGroups = [];
-    for (const y of rowCandidates) {
-      const last = rowGroups[rowGroups.length - 1];
-
-      if (!last || y - last.end > 2) {
-        rowGroups.push({start:y,end:y,sum:y,count:1});
-      } else {
-        last.end = y;
-        last.sum += y;
-        last.count++;
-      }
-    }
-
-    const lineCandidates = rowGroups.map(g => ({
-      y:Math.round(g.sum / g.count),
-      strength:Math.max(...smooth.slice(g.start,g.end + 1))
-    }));
-
-    const staffs = [];
-
-    for (let i = 0; i + 4 < lineCandidates.length; i++) {
-      const group = lineCandidates.slice(i, i + 5);
-      const ys = group.map(g => g.y);
-      const gaps = ys.slice(1).map((v,j) => v - ys[j]);
-      const avg = gaps.reduce((a,b) => a + b, 0) / 4;
-
-      if (avg < 2 || avg > 45) continue;
-
-      const regular = gaps.every(
-        v => Math.abs(v - avg) <= Math.max(2,avg * 0.55)
-      );
-      if (!regular) continue;
-
-      const strength = group.reduce((sum,g) => sum + g.strength,0) / 5;
-      staffs.push({ys,space:avg,strength,lineCount:5});
-      i += 4;
-    }
-
-    let score = staffs.length
-      ? staffs.length * 10 + staffs.reduce((s,v) => s + v.strength,0)
-      : 0;
-
-    if (!staffs.length && lineCandidates.length) {
-      const candidates = lineCandidates
-        .filter(c => c.strength >= 0.08)
-        .sort((a,b) => b.strength - a.strength);
-
-      if (candidates.length) {
-        const line = candidates[0];
-        staffs.push({
-          ys:[line.y],
-          space:Math.max(8,Math.min(24,h * 0.012)),
-          strength:line.strength,
-          lineCount:1
-        });
-        score = 1 + line.strength;
-      }
-    }
-
-    if (staffs.length && (!best || score > best.score)) {
-      best = {binary,staffs,score,threshold};
-    }
+    rowRatio[y] = count / w;
   }
 
-  if (!best) {
-    throw new Error('가로선을 찾지 못했습니다. 악보 부분을 크게 잘라 선명한 이미지로 다시 시도해 주세요.');
-  }
-
-  const binary = best.binary;
-  const staffs = best.staffs;
-  const cleaned = new Uint8Array(binary);
-
-  for (const staff of staffs) {
-    for (const y of staff.ys) {
-      const top = Math.max(0,Math.floor(y - 2));
-      const bottom = Math.min(h - 1,Math.ceil(y + 2));
-
-      for (let yy = top; yy <= bottom; yy++) {
-        const off = yy * w;
-        for (let x = 0; x < w; x++) cleaned[off + x] = 0;
+  const lineYs = [];
+  for (let y = 1; y < h-1; y++) {
+    if (rowRatio[y] > 0.08 &&
+        rowRatio[y] >= rowRatio[y-1] &&
+        rowRatio[y] >= rowRatio[y+1]) {
+      if (!lineYs.length || y - lineYs[lineYs.length-1] > 3) {
+        lineYs.push(y);
       }
     }
   }
 
-  const visited = new Uint8Array(w * h);
-  const components = [];
-  let count = 0;
-  const maxComponents = 30000;
+  if (!lineYs.length) {
+    throw new Error('가로선을 찾지 못했습니다. 더 선명한 이미지를 사용하세요.');
+  }
 
-  for (let sy = 1; sy < h - 1; sy++) {
-    for (let sx = 1; sx < w - 1; sx++) {
-      const start = sy * w + sx;
-      if (!cleaned[start] || visited[start]) continue;
+  // 선을 제외한 픽셀에서 음표 후보 중심을 열 단위로 추정
+  const staffY = lineYs[Math.floor(lineYs.length / 2)];
+  const space = Math.max(8, Math.min(25, h * 0.012));
+  const xHits = new Uint32Array(w);
 
-      const stack = [start];
-      visited[start] = 1;
-
-      let minX = sx, maxX = sx;
-      let minY = sy, maxY = sy;
-      let area = 0;
-
-      while (stack.length) {
-        const p = stack.pop();
-        const x = p % w;
-        const y = Math.floor(p / w);
-
-        area++;
-        minX = Math.min(minX,x);
-        maxX = Math.max(maxX,x);
-        minY = Math.min(minY,y);
-        maxY = Math.max(maxY,y);
-
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx;
-            const ny = y + dy;
-
-            if (nx <= 0 || nx >= w - 1 || ny <= 0 || ny >= h - 1) continue;
-            const np = ny * w + nx;
-
-            if (cleaned[np] && !visited[np]) {
-              visited[np] = 1;
-              stack.push(np);
-            }
-          }
-        }
-      }
-
-      count++;
-      if (count > maxComponents) {
-        throw new Error('분석할 요소가 너무 많습니다. 악보 부분만 잘라서 올려 주세요.');
-      }
-
-      const bw = maxX - minX + 1;
-      const bh = maxY - minY + 1;
-      const cx = (minX + maxX) / 2;
-      const cy = (minY + maxY) / 2;
-
-      if (area < 5 || bw < 2 || bh < 2) continue;
-      if (bw > w * 0.15 || bh > h * 0.15) continue;
-
-      let staff = null;
-      for (const s of staffs) {
-        let top, bottom;
-
-        if (s.lineCount === 1) {
-          top = s.ys[0] - s.space * 4;
-          bottom = s.ys[0] + s.space * 4;
-        } else {
-          top = s.ys[0] - s.space * 1.7;
-          bottom = s.ys[4] + s.space * 1.7;
-        }
-
-        if (cy >= top && cy <= bottom) {
-          staff = s;
-          break;
-        }
-      }
-
-      if (!staff) continue;
-
-      const ratio = bw / bh;
-      const maxNoteHeight = staff.lineCount === 1 ? staff.space * 8 : staff.space * 5.5;
-
-      if (bh > maxNoteHeight) continue;
-      if (ratio < 0.15 || ratio > 6) continue;
-      if (area < Math.max(5,staff.space * staff.space * 0.02)) continue;
-
-      components.push({x:cx,y:cy,minX,maxX,minY,maxY,bw,bh,area,staff});
+  for (let y = Math.max(0, staffY - 5*space); y < Math.min(h, staffY + 5*space); y++) {
+    let nearLine = false;
+    for (const ly of lineYs) {
+      if (Math.abs(y - ly) <= 2) { nearLine = true; break; }
+    }
+    if (nearLine) continue;
+    for (let x = 0; x < w; x++) {
+      if (binary[y*w+x]) xHits[x]++;
     }
   }
 
-  components.sort((a,b) => a.x - b.x);
-  const clusters = [];
-
-  for (const c of components) {
-    const tolerance = Math.max(5,c.staff.space * 0.8);
-    let target = null;
-
-    for (let i = clusters.length - 1; i >= 0; i--) {
-      const prev = clusters[i];
-      if (c.x - prev.maxX > tolerance * 2) break;
-
-      if (Math.abs(c.x - prev.x) <= tolerance && c.staff === prev.staff) {
-        target = prev;
-        break;
+  const candidates = [];
+  const minHit = Math.max(2, Math.round(space * 0.15));
+  let x = 0;
+  while (x < w) {
+    while (x < w && xHits[x] < minHit) x++;
+    if (x >= w) break;
+    const start = x;
+    while (x < w && xHits[x] >= minHit) x++;
+    const end = x - 1;
+    if (end - start >= 1) {
+      const center = Math.round((start + end) / 2 / scale);
+      if (!candidates.length || center - candidates[candidates.length-1] > 8) {
+        candidates.push(center);
       }
     }
-
-    if (!target) {
-      clusters.push({
-        x:c.x,minX:c.minX,maxX:c.maxX,minY:c.minY,maxY:c.maxY,
-        area:c.area,staff:c.staff
-      });
-    } else {
-      target.minX = Math.min(target.minX,c.minX);
-      target.maxX = Math.max(target.maxX,c.maxX);
-      target.minY = Math.min(target.minY,c.minY);
-      target.maxY = Math.max(target.maxY,c.maxY);
-      target.area += c.area;
-      target.x = (target.minX + target.maxX) / 2;
-    }
   }
 
-  clusters.sort((a,b) => a.x - b.x);
-  const unique = [];
-
-  for (const c of clusters) {
-    const x = Math.round(c.x / scale);
-    const previous = unique[unique.length - 1];
-    if (previous && Math.abs(previous.x - x) < 5) continue;
-    unique.push({x,inst:$('instrument').value,dur:1});
+  if (!candidates.length) {
+    throw new Error('음표 후보가 없습니다. 악보 부분을 잘라서 다시 시도하세요.');
   }
 
-  if (!unique.length) {
-    const type = staffs.some(s => s.lineCount === 1) ? '단선' : '오선';
-    throw new Error(`${type}은 찾았지만 음표 후보가 없습니다. 기호가 선과 붙어 있거나 악보가 너무 작을 수 있습니다.`);
-  }
-
-  return {
-    notes:unique,
-    staffCount:staffs.length,
-    lineCount:staffs[0].lineCount,
-    componentCount:components.length,
-    threshold:best.threshold
-  };
+  return candidates.map(pos => ({
+    x: pos, inst: $('instrument').value, dur: 1
+  }));
 }
 
-/* 악보 인식 */
 $('recognize').addEventListener('click', () => {
-  if (!img || !img.complete || !img.naturalWidth) {
+  if (!image) {
     status.textContent = '먼저 악보 이미지를 선택하세요.';
     return;
   }
 
-  const btn = $('recognize');
-  btn.disabled = true;
-  status.textContent = '악보를 분석 중입니다…';
-
-  setTimeout(() => {
-    try {
-      const result = recognize(img);
-      notes = result.notes;
-      render();
-      const type = result.lineCount === 1 ? '단선 악보' : '오선 악보';
-      status.textContent =
-        `분석 완료: ${type}, 선 그룹 ${result.staffCount}개, 음표 후보 ${notes.length}개. 결과를 확인해 주세요.`;
-    } catch (e) {
-      console.error(e);
-      status.textContent = '인식 실패: ' + (e.message || '알 수 없는 오류');
-    } finally {
-      btn.disabled = false;
-    }
-  },30);
-});
-
-/* 음표 추가 */
-$('add').addEventListener('click', () => {
-  notes.push({
-    x:notes.length ? notes[notes.length - 1].x + 50 : 0,
-    inst:$('instrument').value,
-    dur:1
-  });
-  render();
-});
-
-/* 오디오 엔진 */
-function getAudio() {
-  if (!audio) {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) {
-      throw new Error('AudioContext 미지원: 이 브라우저에서는 Web Audio를 사용할 수 없습니다.');
-    }
-    audio = new AudioCtx();
-    audio.addEventListener('statechange', showAudioState);
-    showAudioState();
-  }
-  return audio;
-}
-
-function showAudioState() {
-  if (!audio) {
-    audioState.textContent = '아직 초기화되지 않음';
-    return;
-  }
-
-  const state = audio.state;
-  audioState.textContent = `${state} · 샘플레이트 ${audio.sampleRate}Hz`;
-
-  if (state === 'suspended') {
-    status.textContent = '오디오가 suspended 상태입니다. 화면을 직접 탭하고 880Hz 테스트를 다시 눌러 주세요.';
-  } else if (state === 'interrupted') {
-    status.textContent = '오디오가 interrupted 상태입니다. iPhone의 오디오 출력이 중단되었을 수 있습니다.';
-  } else if (state === 'closed') {
-    status.textContent = '오디오 엔진이 closed 상태입니다. 페이지를 새로고침해 주세요.';
-  }
-}
-
-function errorText(e) {
-  return `${e && e.message ? e.message : String(e)} · AudioContext: ${audio ? audio.state : '생성 실패'}`;
-}
-
-function clearPlaybackNodes() {
-  for (const node of playbackNodes) {
-    try { node.stop(); } catch (_) {}
-    try { node.disconnect(); } catch (_) {}
-  }
-  playbackNodes = [];
-}
-
-/*
- * 중요: 기본음 노드는 탭 이벤트 안에서 즉시 생성하고 start()를 호출합니다.
- * resume()를 await한 뒤에야 노드를 만들지 않도록 해 Safari 자동재생 제한에 대응합니다.
- */
-function startToneImmediately() {
-  const a = getAudio();
-  const osc = a.createOscillator();
-  const gain = a.createGain();
-
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(880, a.currentTime);
-
-  gain.gain.setValueAtTime(0.0001, a.currentTime);
-  gain.gain.linearRampToValueAtTime(0.22, a.currentTime + 0.025);
-  gain.gain.setValueAtTime(0.22, a.currentTime + 0.35);
-  gain.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.55);
-
-  osc.connect(gain);
-  gain.connect(a.destination);
-
-  osc.start(a.currentTime);
-  osc.stop(a.currentTime + 0.56);
-
-  playbackNodes.push(osc, gain);
-  return a;
-}
-
-/* 악기 합성음 또는 실제 장구 음원 */
-function playHit(inst, when, dur) {
-  const a = getAudio();
-  const cfg = instruments[inst] || instruments.buk;
-
-  if (inst === 'janggu' && jangguBuffer) {
-    const source = a.createBufferSource();
-    const gain = a.createGain();
-
-    source.buffer = jangguBuffer;
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(0.9, when + 0.01);
-    gain.gain.setValueAtTime(
-      0.9,
-      when + Math.max(0.02, Math.min(0.25, jangguBuffer.duration * 0.4))
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      when + Math.max(0.08, jangguBuffer.duration)
-    );
-
-    source.connect(gain);
-    gain.connect(a.destination);
-    source.start(when);
-    playbackNodes.push(source, gain);
-    return;
-  }
-
-  const osc = a.createOscillator();
-  const gain = a.createGain();
-
-  osc.type = ['jing','kkwaeng','hat'].includes(inst) ? 'sawtooth' : 'triangle';
-  osc.frequency.setValueAtTime(cfg.f, when);
-
-  if (['buk','janggu','snare'].includes(inst)) {
-    osc.frequency.exponentialRampToValueAtTime(
-      inst === 'snare' ? 100 : 48,
-      when + 0.12
-    );
-  }
-
-  gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.linearRampToValueAtTime(
-    ['jing','kkwaeng'].includes(inst) ? 0.24 : 0.7,
-    when + 0.006
-  );
-  gain.gain.exponentialRampToValueAtTime(
-    0.0001,
-    when + (['jing','kkwaeng','hat'].includes(inst) ? 0.45 : 0.22)
-  );
-
-  osc.connect(gain);
-  gain.connect(a.destination);
-  osc.start(when);
-  osc.stop(when + 0.5);
-  playbackNodes.push(osc, gain);
-
-  /* 타격감을 위한 짧은 노이즈 */
-  const length = Math.max(1, Math.floor(a.sampleRate * 0.045));
-  const buffer = a.createBuffer(1, length, a.sampleRate);
-  const data = buffer.getChannelData(0);
-
-  for (let i = 0; i < length; i++) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
-  }
-
-  const noise = a.createBufferSource();
-  const noiseGain = a.createGain();
-  noise.buffer = buffer;
-
-  noiseGain.gain.setValueAtTime(0.0001, when);
-  noiseGain.gain.linearRampToValueAtTime(
-    ['hat','jing','kkwaeng'].includes(inst) ? 0.22 : 0.12,
-    when + 0.003
-  );
-  noiseGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.045);
-
-  noise.connect(noiseGain);
-  noiseGain.connect(a.destination);
-  noise.start(when);
-  playbackNodes.push(noise, noiseGain);
-}
-
-/* 880Hz 기본 확인음 */
-$('testTone').addEventListener('click', () => {
-  clearPlaybackNodes();
-
   try {
-    /* await 이전에 사용자 탭 이벤트 안에서 즉시 시작 */
-    const a = startToneImmediately();
-    status.textContent = `880Hz 확인음 재생 요청 · AudioContext: ${a.state}`;
-
-    const resumePromise = a.state === 'running'
-      ? Promise.resolve()
-      : a.resume();
-
-    resumePromise.then(() => {
-      audioState.textContent = `${a.state} · 샘플레이트 ${a.sampleRate}Hz`;
-
-      if (a.state === 'running') {
-        status.textContent = '880Hz 확인음을 재생했습니다. 소리가 들리지 않으면 기기 음량과 오디오 출력 장치를 확인하세요.';
-      } else {
-        status.textContent = `기본음 출력 확인 실패 · AudioContext 상태: ${a.state}`;
-      }
-    }).catch(e => {
-      status.textContent = '기본음 재생 오류: ' + errorText(e);
-    });
-  } catch (e) {
-    status.textContent = '기본음 생성 오류: ' + errorText(e);
-  }
-});
-
-/* 선택한 악기 테스트 */
-$('testSound').addEventListener('click', () => {
-  clearPlaybackNodes();
-
-  try {
-    const a = getAudio();
-    const selected = $('instrument').value;
-
-    /* 악기 소리 노드를 먼저 만들고 재개를 요청 */
-    playHit(selected, a.currentTime + 0.03, 1);
+    notes = recognizeImage(image);
+    renderNotes();
     status.textContent =
-      `선택 악기 ${instruments[selected].label} 재생 요청 · AudioContext: ${a.state}`;
-
-    const resumePromise = a.state === 'running'
-      ? Promise.resolve()
-      : a.resume();
-
-    resumePromise.then(() => {
-      audioState.textContent = `${a.state} · 샘플레이트 ${a.sampleRate}Hz`;
-      status.textContent = a.state === 'running'
-        ? `선택 악기 ${instruments[selected].label} 재생 요청 완료 · AudioContext: running`
-        : `악기 소리 출력 실패 가능성 · AudioContext 상태: ${a.state}. 880Hz 기본음 테스트도 확인하세요.`;
-    }).catch(e => {
-      status.textContent = '악기 소리 테스트 오류: ' + errorText(e);
-    });
+      `인식 완료: 음표 후보 ${notes.length}개입니다. 실제 악보와 비교해 수정하세요.`;
   } catch (e) {
-    status.textContent = '악기 소리 테스트 오류: ' + errorText(e);
+    status.textContent = '인식 실패: ' + e.message;
   }
 });
 
-/* 장구 샘플 읽기 */
-$('jangguSample').addEventListener('change', async () => {
-  const f = $('jangguSample').files && $('jangguSample').files[0];
+$('add').addEventListener('click', () => {
+  const last = notes.length ? notes[notes.length-1].x : -50;
+  notes.push({x:last+50, inst:$('instrument').value, dur:1});
+  renderNotes();
+});
 
-  if (!f) {
-    jangguBuffer = null;
-    status.textContent = '장구 음원 선택이 취소되었습니다. 기본 합성음을 사용합니다.';
+function renderNotes() {
+  table.replaceChildren();
+
+  if (!notes.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.textContent = '음표가 없습니다. 음표를 추가하거나 악보를 인식하세요.';
+    tr.append(td);
+    table.append(tr);
     return;
   }
 
-  try {
-    const a = getAudio();
-    const data = await f.arrayBuffer();
-    jangguBuffer = await a.decodeAudioData(data);
-    status.textContent = '장구 음원을 불러왔습니다. 악기를 장구로 선택해 테스트하세요.';
-  } catch (e) {
-    jangguBuffer = null;
-    status.textContent = '장구 음원을 읽지 못했습니다: ' + errorText(e);
-  }
-});
+  notes.forEach((n, i) => {
+    const tr = document.createElement('tr');
+    const number = document.createElement('td');
+    number.textContent = i + 1;
+    tr.append(number);
 
-/* 악보 재생 */
+    const posCell = document.createElement('td');
+    const pos = document.createElement('input');
+    pos.type = 'number';
+    pos.min = '0';
+    pos.value = n.x;
+    pos.addEventListener('change', () => {
+      n.x = Math.max(0, Number(pos.value) || 0);
+    });
+    posCell.append(pos);
+    tr.append(posCell);
+
+    const instCell = document.createElement('td');
+    const inst = document.createElement('select');
+    Object.entries(instruments).forEach(([key, value]) => {
+      const op = document.createElement('option');
+      op.value = key;
+      op.textContent = value.name;
+      op.selected = key === n.inst;
+      inst.append(op);
+    });
+    inst.addEventListener('change', () => n.inst = inst.value);
+    instCell.append(inst);
+    tr.append(instCell);
+
+    const durCell = document.createElement('td');
+    const dur = document.createElement('select');
+    [0.25,0.5,1,1.5,2,3,4].forEach(value => {
+      const op = document.createElement('option');
+      op.value = value;
+      op.textContent = value;
+      op.selected = value === n.dur;
+      dur.append(op);
+    });
+    dur.addEventListener('change', () => n.dur = Number(dur.value));
+    durCell.append(dur);
+    tr.append(durCell);
+
+    const delCell = document.createElement('td');
+    const del = document.createElement('button');
+    del.textContent = '삭제';
+    del.addEventListener('click', () => {
+      notes.splice(i, 1);
+      renderNotes();
+    });
+    delCell.append(del);
+    tr.append(delCell);
+    table.append(tr);
+  });
+}
+
 $('play').addEventListener('click', async () => {
   if (!notes.length) {
     status.textContent = '먼저 악보를 인식하거나 음표를 추가하세요.';
@@ -831,135 +533,92 @@ $('play').addEventListener('click', async () => {
   }
 
   try {
-    const a = getAudio();
-    if (a.state !== 'running') await a.resume();
+    const a = await resumeAudio();
+    stopSounds();
 
-    if (a.state !== 'running') {
-      throw new Error(`AudioContext가 running이 아닙니다: ${a.state}`);
-    }
-
-    clearPlaybackNodes();
-
-    const bpm = Math.max(30,Math.min(240,Number($('tempo').value) || 100));
+    const bpm = Math.max(30, Math.min(240, Number($('tempo').value) || 100));
     const sorted = [...notes].sort((a,b) => a.x - b.x);
+    let time = a.currentTime + 0.08;
+    let previousX = sorted[0].x;
 
-    let t = a.currentTime + 0.08;
-    let prev = sorted[0].x;
-
-    sorted.forEach((n,i) => {
+    sorted.forEach((n, i) => {
       if (i > 0) {
-        const distance = Math.max(0,n.x - prev);
-        t += Math.max(0.08,Math.min(2,(distance / 50) * (60 / bpm)));
+        const distance = Math.max(0, n.x - previousX);
+        time += Math.max(0.08, Math.min(2, distance / 50 * 60 / bpm));
       }
-      playHit(n.inst,t,n.dur);
-      prev = n.x;
+      playHit(n.inst, time);
+      previousX = n.x;
     });
 
     status.textContent = '악보 재생을 시작했습니다.';
   } catch (e) {
-    status.textContent = '재생 오류: ' + errorText(e);
+    status.textContent = '재생 오류: ' + e.message;
   }
 });
 
-/* 정지 */
 $('stop').addEventListener('click', () => {
-  clearPlaybackNodes();
+  stopSounds();
   status.textContent = '재생을 정지했습니다.';
 });
 
-/* 음표 추가 */
-$('add').addEventListener('click', () => {
-  notes.push({
-    x:notes.length ? notes[notes.length - 1].x + 50 : 0,
-    inst:$('instrument').value,
-    dur:1
-  });
-  render();
-});
-
-/* MIDI 저장용 가변 길이 수 */
-function vlq(v) {
-  const out = [v & 127];
-  while ((v = Math.floor(v / 128)) > 0) {
-    out.unshift((v & 127) | 128);
+// MIDI 파일 생성
+function variableLength(value) {
+  const bytes = [value & 0x7f];
+  while ((value = Math.floor(value / 128)) > 0) {
+    bytes.unshift((value & 0x7f) | 0x80);
   }
-  return out;
+  return bytes;
 }
 
-function saveBlob(blob,name) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url),1500);
-}
-
-/* MIDI 저장 */
-$('midi').addEventListener('click', () => {
+$('saveMidi').addEventListener('click', () => {
   if (!notes.length) {
     status.textContent = '저장할 음표가 없습니다.';
     return;
   }
 
   try {
-    const bpm = Math.max(30,Math.min(240,Number($('tempo').value) || 100));
-    const us = Math.round(60000000 / bpm);
+    const bpm = Math.max(30, Math.min(240, Number($('tempo').value) || 100));
+    const micros = Math.round(60000000 / bpm);
+    const events = [[0, [0xff,0x51,3,(micros>>16)&255,(micros>>8)&255,micros&255]]];
 
-    const events = [[
-      0,
-      [0xFF,0x51,3,(us >> 16) & 255,(us >> 8) & 255,us & 255]
-    ]];
-
-    [...notes].sort((a,b) => a.x - b.x).forEach(n => {
+    [...notes].sort((a,b) => a.x-b.x).forEach(n => {
       const tick = Math.round(Math.max(0,n.x) / 50 * 120);
-      const len = Math.max(30,Math.round(120 * n.dur));
+      const length = Math.max(30, Math.round(120 * n.dur));
       const gm = (instruments[n.inst] || instruments.buk).gm;
-
-      events.push(
-        [tick,[0x99,gm,100]],
-        [tick + len,[0x89,gm,0]]
-      );
+      events.push([tick,[0x99,gm,100]]);
+      events.push([tick+length,[0x89,gm,0]]);
     });
 
-    events.sort((a,b) => a[0] - b[0]);
-
+    events.sort((a,b) => a[0]-b[0]);
     const track = [];
-    let last = 0;
+    let lastTick = 0;
 
-    for (const [tick,data] of events) {
-      track.push(...vlq(Math.max(0,tick - last)),...data);
-      last = tick;
+    for (const [tick, data] of events) {
+      track.push(...variableLength(Math.max(0,tick-lastTick)), ...data);
+      lastTick = tick;
     }
+    track.push(0,0xff,0x2f,0);
 
-    track.push(0,0xFF,0x2F,0);
     const len = track.length;
-
-    const header = [
-      0x4D,0x54,0x68,0x64,
-      0,0,0,6,
-      0,0,
-      0,1,
-      1,224,
-      0x4D,0x54,0x72,0x6B,
-      (len >>> 24) & 255,
-      (len >>> 16) & 255,
-      (len >>> 8) & 255,
-      len & 255,
+    const midi = [
+      0x4d,0x54,0x68,0x64, 0,0,0,6, 0,0,0,1, 1,224,
+      0x4d,0x54,0x72,0x6b,
+      (len>>>24)&255,(len>>>16)&255,(len>>>8)&255,len&255,
       ...track
     ];
 
-    saveBlob(
-      new Blob([new Uint8Array(header)],{type:'audio/midi'}),
-      'gugak-score.mid'
-    );
-
+    const blob = new Blob([new Uint8Array(midi)], {type:'audio/midi'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'gugak-score.mid';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
     status.textContent = 'MIDI 파일을 생성했습니다.';
   } catch (e) {
-    console.error(e);
-    status.textContent = 'MIDI 저장 오류: ' + (e.message || e);
+    status.textContent = 'MIDI 저장 오류: ' + e.message;
   }
 });
 

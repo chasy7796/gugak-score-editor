@@ -6,57 +6,27 @@
 <title>국악 악보 인식 및 MIDI</title>
 <style>
 *{box-sizing:border-box}
-body{
-  font-family:system-ui,sans-serif;
-  max-width:900px;
-  margin:auto;
-  padding:14px;
-  background:#f4f7fb;
-  color:#182230
-}
-.panel{
-  background:white;
-  border:1px solid #dbe2ec;
-  border-radius:12px;
-  padding:14px;
-  margin:12px 0
-}
-button,input,select{
-  font:inherit;
-  padding:9px;
-  border:1px solid #c5cfdd;
-  border-radius:8px
-}
+body{font-family:system-ui,sans-serif;max-width:900px;margin:auto;padding:14px;background:#f4f7fb;color:#182230}
+.panel{background:white;border:1px solid #dbe2ec;border-radius:12px;padding:14px;margin:12px 0}
+button,input,select{font:inherit;padding:9px;border:1px solid #c5cfdd;border-radius:8px}
 button{cursor:pointer}
-button:disabled{opacity:.55;cursor:wait}
+button:disabled{opacity:.5}
 .primary{background:#155bd7;color:white;border-color:#155bd7}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-#preview{
-  display:block;
-  max-width:100%;
-  max-height:450px;
-  margin:12px auto
-}
-#status{color:#155bd7;min-height:24px;overflow-wrap:anywhere}
+#preview{display:block;max-width:100%;max-height:500px;margin:12px auto}
+#status{color:#155bd7;min-height:24px;overflow-wrap:anywhere;line-height:1.5}
 table{width:100%;border-collapse:collapse}
 td,th{text-align:left;padding:7px;border-bottom:1px solid #ddd}
 td input,td select{max-width:100%;width:100%}
 .small{font-size:13px;color:#596579;line-height:1.5}
-h2{font-size:23px}
-@media(max-width:500px){
-  body{padding:8px}
-  .panel{padding:10px}
-  td,th{padding:5px;font-size:13px}
-  td input,td select{padding:6px}
-}
 </style>
 </head>
 <body>
 <h2>🥁 국악 악보 인식 · MIDI</h2>
 <p class="small">
-  악보 JPG/PNG/WebP 이미지를 올리고 인식 버튼을 누르세요.
-  자동 인식은 음표 후보를 추출하는 보조 기능입니다.
-  인식 결과를 확인하고 필요하면 직접 수정해 주세요.
+  악보 JPG/PNG/WebP를 올린 뒤 인식 버튼을 누르세요.
+  인식 결과는 자동 추출한 후보이며, 실제 악보의 기호와 박자를
+  완전히 판독하는 기능은 아닙니다.
 </p>
 <section class="panel">
   <div class="row">
@@ -91,19 +61,13 @@ h2{font-size:23px}
     <button id="add">＋ 음표 추가</button>
   </div>
   <p class="small">
-    위치 값은 음표가 재생되는 시간 순서와 간격에 사용됩니다.
-    음표의 위치, 악기, 길이를 표에서 수정할 수 있습니다.
+    위치 값은 음표 사이의 시간 간격에 사용됩니다.
+    인식 결과를 확인하고 위치, 악기, 길이를 수정하세요.
   </p>
   <div style="overflow-x:auto">
     <table>
       <thead>
-        <tr>
-          <th>#</th>
-          <th>위치</th>
-          <th>악기</th>
-          <th>길이(박)</th>
-          <th>삭제</th>
-        </tr>
+        <tr><th>#</th><th>위치</th><th>악기</th><th>길이(박)</th><th>삭제</th></tr>
       </thead>
       <tbody id="rows">
         <tr><td colspan="5">인식 결과가 없습니다.</td></tr>
@@ -125,13 +89,13 @@ let audio = null;
 let playbackNodes = [];
 let imageUrl = null;
 const instruments = {
-  buk:     {label:'북',     gm:36, f:95},
-  janggu:  {label:'장구',   gm:38, f:150},
-  jing:    {label:'징',     gm:49, f:900},
-  kkwaeng: {label:'꽹과리', gm:56, f:1450},
-  wood:    {label:'목탁',   gm:76, f:550},
-  snare:   {label:'스네어', gm:40, f:190},
-  hat:     {label:'하이햇', gm:42, f:7000}
+  buk:     {label:'북',gm:36,f:95},
+  janggu:  {label:'장구',gm:38,f:150},
+  jing:    {label:'징',gm:49,f:900},
+  kkwaeng: {label:'꽹과리',gm:56,f:1450},
+  wood:    {label:'목탁',gm:76,f:550},
+  snare:   {label:'스네어',gm:40,f:190},
+  hat:     {label:'하이햇',gm:42,f:7000}
 };
 /* 이미지 업로드 */
 file.addEventListener('change', () => {
@@ -139,17 +103,17 @@ file.addEventListener('change', () => {
   img = null;
   notes = [];
   render();
+  preview.hidden = true;
   if (imageUrl) {
     URL.revokeObjectURL(imageUrl);
     imageUrl = null;
   }
-  preview.hidden = true;
   if (!f) {
-    status.textContent = '이미지 파일을 선택해 주세요.';
+    status.textContent = '이미지 파일을 선택하세요.';
     return;
   }
   if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
-    status.textContent = 'JPG, PNG 또는 WebP 이미지 파일을 선택해 주세요.';
+    status.textContent = 'JPG, PNG 또는 WebP 파일만 사용할 수 있습니다.';
     return;
   }
   imageUrl = URL.createObjectURL(f);
@@ -159,14 +123,14 @@ file.addEventListener('change', () => {
     preview.src = imageUrl;
     preview.hidden = false;
     status.textContent =
-      `이미지 준비 완료 (${next.naturalWidth} × ${next.naturalHeight}). 악보 인식 버튼을 눌러 주세요.`;
+      `이미지 준비 완료: ${next.naturalWidth} × ${next.naturalHeight}. 인식 버튼을 눌러 주세요.`;
   };
   next.onerror = () => {
-    status.textContent = '이미지를 읽지 못했습니다. 다른 이미지 파일을 선택해 주세요.';
+    status.textContent = '이미지를 읽지 못했습니다. 다른 파일을 선택하세요.';
   };
   next.src = imageUrl;
 });
-/* 표 렌더링 */
+/* 결과 표 */
 function render() {
   rows.replaceChildren();
   if (!notes.length) {
@@ -180,9 +144,9 @@ function render() {
   }
   notes.forEach((n, i) => {
     const tr = document.createElement('tr');
-    const number = document.createElement('td');
-    number.textContent = i + 1;
-    tr.append(number);
+    const num = document.createElement('td');
+    num.textContent = i + 1;
+    tr.append(num);
     const posCell = document.createElement('td');
     const pos = document.createElement('input');
     pos.type = 'number';
@@ -203,23 +167,19 @@ function render() {
       op.selected = n.inst === key;
       inst.append(op);
     });
-    inst.addEventListener('change', () => {
-      n.inst = inst.value;
-    });
+    inst.addEventListener('change', () => n.inst = inst.value);
     instCell.append(inst);
     tr.append(instCell);
     const durCell = document.createElement('td');
     const dur = document.createElement('select');
-    [0.25, 0.5, 1, 1.5, 2, 3, 4].forEach(v => {
+    [0.25,0.5,1,1.5,2,3,4].forEach(v => {
       const op = document.createElement('option');
       op.value = v;
       op.textContent = v;
       op.selected = n.dur === v;
       dur.append(op);
     });
-    dur.addEventListener('change', () => {
-      n.dur = Number(dur.value);
-    });
+    dur.addEventListener('change', () => n.dur = Number(dur.value));
     durCell.append(dur);
     tr.append(durCell);
     const delCell = document.createElement('td');
@@ -235,19 +195,15 @@ function render() {
   });
 }
 /*
- * 악보 인식
- * 1. 이미지를 축소하여 처리
- * 2. 어두운 픽셀을 이진화
- * 3. 긴 가로 오선 후보를 검출
- * 4. 오선 위치의 픽셀을 제거
- * 5. 남은 연결 성분에서 음표 후보를 추출
- *
- * 주의: 이 방식은 완전한 악보 판독기가 아닙니다.
- * 기호, 음표 종류, 쉼표, 박자 등을 완벽하게 해석하지는 못합니다.
+ * 개선된 악보 인식
+ * - 여러 밝기 기준으로 선 후보를 탐색
+ * - 행별 어두운 픽셀 비율을 부드럽게 계산
+ * - 다섯 줄의 간격을 비교하여 오선 후보를 찾음
+ * - 오선을 제거한 이미지에서 연결 성분을 분석
  */
 function recognize(image) {
-  const maxW = 1000;
-  const maxH = 1400;
+  const maxW = 1200;
+  const maxH = 1600;
   const scale = Math.min(
     1,
     maxW / image.naturalWidth,
@@ -259,115 +215,153 @@ function recognize(image) {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d', {willReadFrequently:true});
-  if (!ctx) {
-    throw new Error('이미지 분석 기능을 사용할 수 없습니다.');
-  }
+  if (!ctx) throw new Error('이미지 분석 기능을 사용할 수 없습니다.');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
   ctx.drawImage(image, 0, 0, w, h);
   const pixels = ctx.getImageData(0, 0, w, h).data;
-  const dark = new Uint8Array(w * h);
-  /* 이미지 이진화 */
+  const gray = new Uint8Array(w * h);
   for (let p = 0, j = 0; p < pixels.length; p += 4, j++) {
-    const gray =
+    gray[j] = Math.round(
       0.299 * pixels[p] +
       0.587 * pixels[p + 1] +
-      0.114 * pixels[p + 2];
-    dark[j] = gray < 160 ? 1 : 0;
-  }
-  /*
-   * 가로 방향의 어두운 픽셀 비율을 이용해
-   * 오선의 각 가로줄을 찾습니다.
-   */
-  const rowRatio = new Float32Array(h);
-  for (let y = 0; y < h; y++) {
-    let count = 0;
-    const offset = y * w;
-    for (let x = 0; x < w; x++) {
-      count += dark[offset + x];
-    }
-    rowRatio[y] = count / w;
-  }
-  const rawLineYs = [];
-  for (let y = 0; y < h; y++) {
-    if (rowRatio[y] > 0.48) {
-      rawLineYs.push(y);
-    }
-  }
-  /* 인접한 행을 하나의 가로줄 후보로 묶습니다. */
-  const lines = [];
-  for (const y of rawLineYs) {
-    if (
-      !lines.length ||
-      y - lines[lines.length - 1].end > 2
-    ) {
-      lines.push({start:y, end:y, center:y});
-    } else {
-      const last = lines[lines.length - 1];
-      last.end = y;
-      last.center = Math.round((last.start + last.end) / 2);
-    }
-  }
-  const lineCenters = lines.map(v => v.center);
-  /*
-   * 다섯 줄의 간격이 대략 일정한 그룹을 찾아
-   * 오선 후보로 등록합니다.
-   */
-  const staffs = [];
-  for (let i = 0; i + 4 < lineCenters.length; i++) {
-    const group = lineCenters.slice(i, i + 5);
-    const gaps = group.slice(1).map((v, j) => v - group[j]);
-    const avg = gaps.reduce((a, b) => a + b, 0) / 4;
-    const regular =
-      avg >= 2 &&
-      avg <= 35 &&
-      gaps.every(v => Math.abs(v - avg) < avg * 0.65);
-    if (regular) {
-      staffs.push({
-        ys: group,
-        space: avg
-      });
-      i += 4;
-    }
-  }
-  if (!staffs.length) {
-    throw new Error(
-      '오선을 찾지 못했습니다. 오선 다섯 줄이 선명하게 보이도록 이미지를 자르거나 더 선명한 사진을 사용해 주세요.'
+      0.114 * pixels[p + 2]
     );
   }
   /*
-   * 오선 픽셀을 복사본에서 제거합니다.
-   * 원본 이미지는 그대로 유지합니다.
+   * 밝기 기준을 너무 엄격하게 잡지 않습니다.
+   * 흐린 회색 선과 스캔 이미지도 후보에 포함합니다.
    */
-  const cleaned = new Uint8Array(dark);
+  const thresholds = [180, 205, 150];
+  let best = null;
+  for (const threshold of thresholds) {
+    const binary = new Uint8Array(w * h);
+    for (let i = 0; i < gray.length; i++) {
+      binary[i] = gray[i] < threshold ? 1 : 0;
+    }
+    const rowRatio = new Float32Array(h);
+    for (let y = 0; y < h; y++) {
+      let count = 0;
+      const off = y * w;
+      for (let x = 0; x < w; x++) {
+        count += binary[off + x];
+      }
+      rowRatio[y] = count / w;
+    }
+    /*
+     * 3행 이동 평균으로 기울어짐과 두께에 따른
+     * 단일 행의 누락을 조금 완화합니다.
+     */
+    const smooth = new Float32Array(h);
+    for (let y = 0; y < h; y++) {
+      let sum = 0;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy;
+        if (yy >= 0 && yy < h) {
+          sum += rowRatio[yy];
+          n++;
+        }
+      }
+      smooth[y] = sum / n;
+    }
+    /*
+     * 선 후보: 가로 픽셀 비율이 낮더라도
+     * 18% 이상이면 검토합니다.
+     */
+    const rowCandidates = [];
+    const minRatio = 0.18;
+    for (let y = 0; y < h; y++) {
+      if (smooth[y] >= minRatio) {
+        rowCandidates.push(y);
+      }
+    }
+    const rowGroups = [];
+    for (const y of rowCandidates) {
+      const last = rowGroups[rowGroups.length - 1];
+      if (!last || y - last.end > 2) {
+        rowGroups.push({start:y, end:y, sum:y, count:1});
+      } else {
+        last.end = y;
+        last.sum += y;
+        last.count++;
+      }
+    }
+    const lineCandidates = rowGroups.map(g => ({
+      y: Math.round(g.sum / g.count),
+      strength: Math.max(...smooth.slice(g.start, g.end + 1))
+    }));
+    /*
+     * 다섯 줄 간격이 유사한 그룹을 찾습니다.
+     * 지나치게 넓거나 불규칙한 간격은 제외합니다.
+     */
+    const staffs = [];
+    for (let i = 0; i + 4 < lineCandidates.length; i++) {
+      const group = lineCandidates.slice(i, i + 5);
+      const ys = group.map(g => g.y);
+      const gaps = ys.slice(1).map((v, j) => v - ys[j]);
+      const avg = gaps.reduce((a,b) => a+b, 0) / 4;
+      if (avg < 2 || avg > 45) continue;
+      const regular = gaps.every(
+        v => Math.abs(v - avg) <= Math.max(2, avg * 0.55)
+      );
+      if (!regular) continue;
+      const strength =
+        group.reduce((sum, g) => sum + g.strength, 0) / 5;
+      staffs.push({
+        ys,
+        space: avg,
+        strength
+      });
+      i += 4;
+    }
+    if (staffs.length) {
+      const score = staffs.length * 10 +
+        staffs.reduce((s, v) => s + v.strength, 0);
+      if (!best || score > best.score) {
+        best = {binary, staffs, score, threshold};
+      }
+    }
+  }
+  if (!best) {
+    throw new Error(
+      '오선을 찾지 못했습니다. 악보가 화면에 크게 보이도록 자르고, 수평에 가깝고 선명한 이미지로 다시 시도해 주세요.'
+    );
+  }
+  const binary = best.binary;
+  const staffs = best.staffs;
+  /*
+   * 각 오선 위치를 제거합니다.
+   * 선 두께가 일정하지 않을 수 있어 ±2행을 지웁니다.
+   */
+  const cleaned = new Uint8Array(binary);
   for (const staff of staffs) {
     for (const y of staff.ys) {
-      const from = Math.max(0, y - 1);
-      const to = Math.min(h - 1, y + 1);
-      for (let yy = from; yy <= to; yy++) {
-        const offset = yy * w;
+      const top = Math.max(0, Math.floor(y - 2));
+      const bottom = Math.min(h - 1, Math.ceil(y + 2));
+      for (let yy = top; yy <= bottom; yy++) {
+        const off = yy * w;
         for (let x = 0; x < w; x++) {
-          cleaned[offset + x] = 0;
+          cleaned[off + x] = 0;
         }
       }
     }
   }
   /*
-   * 연결 성분 분석.
-   * 오선 제거 후 남은 잉크 덩어리를 분석합니다.
+   * 연결 성분 분석: 남은 어두운 덩어리의 경계 상자를 계산합니다.
    */
   const visited = new Uint8Array(w * h);
-  const found = [];
-  const maxComponents = 20000;
-  let componentCount = 0;
+  const components = [];
+  const maxComponents = 30000;
+  let count = 0;
   for (let sy = 1; sy < h - 1; sy++) {
     for (let sx = 1; sx < w - 1; sx++) {
       const start = sy * w + sx;
       if (!cleaned[start] || visited[start]) continue;
       const stack = [start];
       visited[start] = 1;
-      let minX = sx;
-      let maxX = sx;
-      let minY = sy;
-      let maxY = sy;
+      let minX = sx, maxX = sx;
+      let minY = sy, maxY = sy;
       let area = 0;
       while (stack.length) {
         const p = stack.pop();
@@ -383,12 +377,8 @@ function recognize(image) {
             if (dx === 0 && dy === 0) continue;
             const nx = x + dx;
             const ny = y + dy;
-            if (
-              nx <= 0 || nx >= w - 1 ||
-              ny <= 0 || ny >= h - 1
-            ) {
-              continue;
-            }
+            if (nx <= 0 || nx >= w - 1 ||
+                ny <= 0 || ny >= h - 1) continue;
             const np = ny * w + nx;
             if (cleaned[np] && !visited[np]) {
               visited[np] = 1;
@@ -397,99 +387,141 @@ function recognize(image) {
           }
         }
       }
-      componentCount++;
-      if (componentCount > maxComponents) {
+      count++;
+      if (count > maxComponents) {
         throw new Error(
-          '이미지의 작은 요소가 너무 많습니다. 이미지를 자르거나 해상도를 낮춰 주세요.'
+          '분석할 요소가 너무 많습니다. 악보 부분만 잘라서 올려 주세요.'
         );
       }
       const bw = maxX - minX + 1;
       const bh = maxY - minY + 1;
       const cx = (minX + maxX) / 2;
       const cy = (minY + maxY) / 2;
-      /* 너무 작은 점이나 너무 큰 덩어리를 제외합니다. */
-      if (
-        area < 7 ||
-        bw < 3 ||
-        bh < 3 ||
-        bw > w * 0.12 ||
-        bh > h * 0.12
-      ) {
-        continue;
-      }
-      /* 오선 영역 안에 있는 후보만 사용합니다. */
+      if (area < 5 || bw < 2 || bh < 2) continue;
+      if (bw > w * 0.15 || bh > h * 0.15) continue;
       let staff = null;
       for (const s of staffs) {
-        const top = s.ys[0] - s.space * 1.5;
-        const bottom = s.ys[4] + s.space * 1.5;
+        const top = s.ys[0] - s.space * 1.7;
+        const bottom = s.ys[4] + s.space * 1.7;
         if (cy >= top && cy <= bottom) {
           staff = s;
           break;
         }
       }
       if (!staff) continue;
-      const ratio = bw / bh;
       /*
-       * 음표 머리 또는 타악기 기호 후보를 느슨하게 추립니다.
-       * 실제 악보 기호를 정확히 분류하는 단계는 아닙니다.
+       * 기둥이 붙은 음표도 놓치지 않도록
+       * 너비/높이 비율 제한을 넓게 설정합니다.
        */
-      if (
-        ratio < 0.35 ||
-        ratio > 3.2 ||
-        area < staff.space * staff.space * 0.04
-      ) {
-        continue;
-      }
-      found.push({
-        x: Math.round(cx / scale),
-        inst: $('instrument').value,
-        dur: 1
+      const ratio = bw / bh;
+      const maxNoteHeight = staff.space * 5.5;
+      if (bh > maxNoteHeight) continue;
+      if (ratio < 0.18 || ratio > 5.5) continue;
+      if (area < Math.max(5, staff.space * staff.space * 0.025)) continue;
+      components.push({
+        x: cx,
+        y: cy,
+        minX, maxX, minY, maxY,
+        bw, bh, area,
+        staff
       });
     }
   }
-  /* 왼쪽부터 오른쪽 순으로 정렬합니다. */
-  found.sort((a, b) => a.x - b.x);
   /*
-   * 가까운 위치에서 중복 검출된 후보를 합칩니다.
-   * 간격은 원본 이미지 기준으로 계산합니다.
+   * 같은 음표 주변에서 여러 조각이 검출될 수 있습니다.
+   * 가까운 x 좌표의 조각은 하나의 후보로 묶습니다.
    */
-  const unique = [];
-  for (const n of found) {
-    const duplicate = unique.some(
-      v => Math.abs(v.x - n.x) < Math.max(6, 8 / scale)
-    );
-    if (!duplicate) {
-      unique.push(n);
+  components.sort((a,b) => a.x - b.x);
+  const clusters = [];
+  for (const c of components) {
+    const tolerance = Math.max(5, c.staff.space * 0.8);
+    let target = null;
+    for (let i = clusters.length - 1; i >= 0; i--) {
+      const prev = clusters[i];
+      if (c.x - prev.maxX > tolerance * 2) break;
+      if (
+        Math.abs(c.x - prev.x) <= tolerance &&
+        c.staff === prev.staff
+      ) {
+        target = prev;
+        break;
+      }
+    }
+    if (!target) {
+      clusters.push({
+        x:c.x,
+        minX:c.minX,
+        maxX:c.maxX,
+        minY:c.minY,
+        maxY:c.maxY,
+        area:c.area,
+        staff:c.staff
+      });
+    } else {
+      target.minX = Math.min(target.minX, c.minX);
+      target.maxX = Math.max(target.maxX, c.maxX);
+      target.minY = Math.min(target.minY, c.minY);
+      target.maxY = Math.max(target.maxY, c.maxY);
+      target.area += c.area;
+      target.x = (target.minX + target.maxX) / 2;
     }
   }
-  return unique;
+  clusters.sort((a,b) => a.x - b.x);
+  /*
+   * 지나치게 가까운 후보는 중복일 가능성이 높습니다.
+   * 서로 다른 음표가 붙어 있는 경우도 있으므로
+   * 간격을 너무 크게 잡지는 않습니다.
+   */
+  const unique = [];
+  for (const c of clusters) {
+    const x = Math.round(c.x / scale);
+    const previous = unique[unique.length - 1];
+    if (previous && Math.abs(previous.x - x) < 5) continue;
+    unique.push({
+      x,
+      inst: $('instrument').value,
+      dur: 1
+    });
+  }
+  if (!unique.length) {
+    throw new Error(
+      `오선 ${staffs.length}개 그룹은 찾았지만 음표 후보를 찾지 못했습니다. 기호가 오선과 연결되어 있거나 악보 형식이 다를 수 있습니다.`
+    );
+  }
+  return {
+    notes: unique,
+    staffCount: staffs.length,
+    componentCount: components.length,
+    threshold: best.threshold
+  };
 }
 /* 인식 버튼 */
 $('recognize').addEventListener('click', () => {
   if (!img || !img.complete || !img.naturalWidth) {
-    status.textContent =
-      '먼저 이미지 파일을 선택하고 준비 완료 메시지가 나올 때까지 기다려 주세요.';
+    status.textContent = '먼저 악보 이미지를 선택하세요.';
     return;
   }
   const btn = $('recognize');
   btn.disabled = true;
-  status.textContent = '악보를 분석하고 있습니다. 잠시 기다려 주세요.';
+  status.textContent = '이미지의 오선과 음표 후보를 분석 중입니다…';
   setTimeout(() => {
     try {
-      notes = recognize(img);
+      const result = recognize(img);
+      notes = result.notes;
       render();
-      status.textContent = notes.length
-        ? `음표 후보 ${notes.length}개를 찾았습니다. 표에서 결과를 확인해 주세요.`
-        : '음표 후보를 찾지 못했습니다. 더 선명한 이미지를 사용하거나 음표 추가 버튼으로 입력해 주세요.';
+      status.textContent =
+        `분석 완료: 오선 그룹 ${result.staffCount}개, ` +
+        `음표 후보 ${notes.length}개. ` +
+        `검출 기준 ${result.threshold}. 표에서 결과를 확인해 주세요.`;
     } catch (e) {
       console.error(e);
-      status.textContent = '인식 오류: ' + (e.message || '알 수 없는 오류');
+      status.textContent = '인식 실패: ' + (e.message || '알 수 없는 오류');
     } finally {
       btn.disabled = false;
     }
   }, 30);
 });
-/* 음표 수동 추가 */
+/* 음표 추가 */
 $('add').addEventListener('click', () => {
   notes.push({
     x: notes.length ? notes[notes.length - 1].x + 50 : 0,
@@ -498,47 +530,37 @@ $('add').addEventListener('click', () => {
   });
   render();
 });
-/* 오디오 준비 */
+/* 오디오 */
 function getAudio() {
   if (!audio) {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) {
-      throw new Error('이 브라우저는 오디오 재생을 지원하지 않습니다.');
-    }
+    if (!AudioCtx) throw new Error('이 브라우저는 오디오 재생을 지원하지 않습니다.');
     audio = new AudioCtx();
   }
   return audio;
 }
-/* 예약된 음향 노드를 정리합니다. */
 function clearPlaybackNodes() {
   for (const node of playbackNodes) {
-    try {
-      node.stop();
-    } catch (_) {}
-    try {
-      node.disconnect();
-    } catch (_) {}
+    try { node.stop(); } catch (_) {}
+    try { node.disconnect(); } catch (_) {}
   }
   playbackNodes = [];
 }
-/* 타악기 음향 생성 */
 function playHit(inst, when, dur) {
   const a = getAudio();
   const osc = a.createOscillator();
   const gain = a.createGain();
   const cfg = instruments[inst] || instruments.buk;
-  osc.type = ['jing', 'kkwaeng', 'hat'].includes(inst)
-    ? 'square'
-    : 'triangle';
+  osc.type = ['jing','kkwaeng','hat'].includes(inst) ? 'square' : 'triangle';
   osc.frequency.setValueAtTime(cfg.f, when);
-  if (['buk', 'janggu'].includes(inst)) {
+  if (['buk','janggu'].includes(inst)) {
     osc.frequency.exponentialRampToValueAtTime(42, when + 0.13);
   }
   osc.connect(gain);
   gain.connect(a.destination);
   gain.gain.setValueAtTime(0.0001, when);
   gain.gain.exponentialRampToValueAtTime(
-    ['jing', 'kkwaeng'].includes(inst) ? 0.16 : 0.5,
+    ['jing','kkwaeng'].includes(inst) ? 0.16 : 0.5,
     when + 0.008
   );
   gain.gain.exponentialRampToValueAtTime(
@@ -559,11 +581,8 @@ $('play').addEventListener('click', async () => {
     const a = getAudio();
     await a.resume();
     clearPlaybackNodes();
-    const bpm = Math.max(
-      30,
-      Math.min(240, Number($('tempo').value) || 100)
-    );
-    const sorted = [...notes].sort((a, b) => a.x - b.x);
+    const bpm = Math.max(30, Math.min(240, Number($('tempo').value) || 100));
+    const sorted = [...notes].sort((a,b) => a.x - b.x);
     let t = a.currentTime + 0.08;
     let prev = sorted[0].x;
     sorted.forEach((n, i) => {
@@ -585,6 +604,7 @@ $('stop').addEventListener('click', async () => {
   if (audio) {
     try {
       await audio.suspend();
+      await audio.resume();
     } catch (_) {}
   }
   status.textContent = '재생을 정지했습니다.';
@@ -597,7 +617,6 @@ function vlq(v) {
   }
   return out;
 }
-/* 파일 저장 */
 function saveBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -608,36 +627,29 @@ function saveBlob(blob, name) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
-/* MIDI 파일 생성 */
+/* MIDI 저장 */
 $('midi').addEventListener('click', () => {
   if (!notes.length) {
     status.textContent = '저장할 음표가 없습니다.';
     return;
   }
   try {
-    const bpm = Math.max(
-      30,
-      Math.min(240, Number($('tempo').value) || 100)
-    );
+    const bpm = Math.max(30, Math.min(240, Number($('tempo').value) || 100));
     const us = Math.round(60000000 / bpm);
-    /* MIDI 템포 메타 이벤트 */
     const events = [[
       0,
-      [0xFF, 0x51, 0x03, (us >> 16) & 255, (us >> 8) & 255, us & 255]
+      [0xFF,0x51,3,(us >> 16) & 255,(us >> 8) & 255,us & 255]
     ]];
-    [...notes]
-      .sort((a, b) => a.x - b.x)
-      .forEach(n => {
-        const tick = Math.round((Math.max(0, n.x) / 50) * 120);
-        const len = Math.max(30, Math.round(120 * n.dur));
-        const gm = (instruments[n.inst] || instruments.buk).gm;
-        /* MIDI 드럼 채널 10: 0-based channel 9 */
-        events.push(
-          [tick, [0x99, gm, 100]],
-          [tick + len, [0x89, gm, 0]]
-        );
-      });
-    events.sort((a, b) => a[0] - b[0]);
+    [...notes].sort((a,b) => a.x - b.x).forEach(n => {
+      const tick = Math.round(Math.max(0, n.x) / 50 * 120);
+      const len = Math.max(30, Math.round(120 * n.dur));
+      const gm = (instruments[n.inst] || instruments.buk).gm;
+      events.push(
+        [tick, [0x99, gm, 100]],
+        [tick + len, [0x89, gm, 0]]
+      );
+    });
+    events.sort((a,b) => a[0] - b[0]);
     const track = [];
     let last = 0;
     for (const [tick, data] of events) {

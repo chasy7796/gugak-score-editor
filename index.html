@@ -1,104 +1,394 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>국악 타악기 악보실</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>국악 악보 인식 및 MIDI</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f5f3ed;color:#222;font-family:system-ui,sans-serif}
-header{background:#253d35;color:white;padding:18px}
-h1{font-size:22px;margin:0}
-p{font-size:13px}
-main{padding:14px;max-width:900px;margin:auto}
-input,button{font:inherit;border-radius:9px;padding:10px;border:1px solid #ccc}
-input{width:100%;margin:8px 0 12px}
-.tools{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
-button{background:white;color:#222}
-button:active{background:#d9e8dc}
-.primary{background:#253d35;color:white}
-#paper{background:white;border:1px solid #ddd;border-radius:10px;overflow:hidden}
-canvas{width:100%;display:block;touch-action:manipulation}
-.small{font-size:12px;color:#666}
+body{font-family:system-ui,sans-serif;max-width:900px;margin:auto;padding:14px;background:#f4f7fb;color:#182230}
+.panel{background:white;border:1px solid #dbe2ec;border-radius:12px;padding:14px;margin:12px 0}
+button,input,select{font:inherit;padding:9px;border:1px solid #c5cfdd;border-radius:8px}
+button{cursor:pointer}
+.primary{background:#155bd7;color:white;border-color:#155bd7}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+#preview{display:block;max-width:100%;max-height:450px;margin:12px auto}
+#status{color:#155bd7;min-height:24px;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse}
+td,th{text-align:left;padding:7px;border-bottom:1px solid #ddd}
+td input,td select{max-width:100%;width:100%}
+.small{font-size:13px;color:#596579}
 </style>
 </head>
 <body>
-<header><h1>국악 타악기 악보실</h1><p>오선보 타악 리듬 편집 · 내 기기에 저장</p></header>
-<main>
-<label for="title">악보 제목</label>
-<input id="title" value="새 국악 타악기 악보">
-<div class="tools">
-<button onclick="choose('quarter')">● 4분음표</button>
-<button onclick="choose('eighth')">♪ 8분음표</button>
-<button onclick="choose('rest')">𝄽 쉼표</button>
-<button onclick="choose('text')">가나다 글자</button>
-<button onclick="undo()">↶ 실행 취소</button>
-</div>
-<p class="small">기호를 선택하고 오선보를 누르면 입력됩니다. 글자 모드는 입력할 글자를 물어봅니다.</p>
-<div id="paper"><canvas id="score"></canvas></div>
-<div class="tools">
-<button class="primary" onclick="save()">기기에 저장</button>
-<button onclick="load()">저장한 악보 열기</button>
-<button onclick="downloadPNG()">PNG 이미지 저장</button>
-<button onclick="clearScore()">새 악보</button>
-</div>
-<p id="status" class="small">악보를 편집해 보세요.</p>
-</main>
+<h2>🥁 국악 악보 인식 · MIDI</h2>
+<p class="small">악보 JPG/PNG를 올리고 인식 버튼을 누르세요. 자동 인식은 음표 후보를 찾는 보조 기능이며, 결과를 직접 확인해야 합니다.</p>
+
+<section class="panel">
+  <div class="row">
+    <input id="file" type="file" accept="image/jpeg,image/png,image/webp">
+    <button id="recognize" class="primary">악보 인식</button>
+  </div>
+  <div class="row">
+    <label>악기
+      <select id="instrument">
+        <option value="buk">북</option>
+        <option value="janggu">장구</option>
+        <option value="jing">징</option>
+        <option value="kkwaeng">꽹과리</option>
+        <option value="wood">목탁</option>
+        <option value="snare">스네어</option>
+        <option value="hat">하이햇</option>
+      </select>
+    </label>
+    <label>빠르기 <input id="tempo" type="number" min="30" max="240" value="100" style="width:75px"> BPM</label>
+  </div>
+  <img id="preview" hidden alt="악보 미리보기">
+  <div id="status" aria-live="polite">먼저 악보 이미지를 선택하세요.</div>
+</section>
+
+<section class="panel">
+  <div class="row">
+    <button id="play" class="primary">▶ 재생</button>
+    <button id="stop">■ 정지</button>
+    <button id="midi">MIDI 저장</button>
+    <button id="add">+ 음표 추가</button>
+  </div>
+  <p class="small">위치 값은 음표 순서와 간격에 사용됩니다. 인식 결과를 확인하고 필요하면 수정하세요.</p>
+  <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>#</th><th>위치</th><th>악기</th><th>길이(박)</th><th>삭제</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5">인식 결과가 없습니다.</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
 <script>
-const c=document.getElementById('score'),ctx=c.getContext('2d');
-let items=[],history=[],tool='quarter';
-const W=900,H=310,left=55,right=850,top=100,spacing=14;
-function choose(t){tool=t;document.getElementById('status').textContent=
-({'quarter':'4분음표 선택','eighth':'8분음표 선택','rest':'쉼표 선택','text':'글자 입력 선택'})[t];}
-function draw(){
- c.width=W*2;c.height=H*2;
- ctx.setTransform(2,0,0,2,0,0);ctx.fillStyle='white';ctx.fillRect(0,0,W,H);
- ctx.fillStyle='#222';ctx.font='bold 22px sans-serif';
- ctx.fillText(document.getElementById('title').value||'국악 타악기 악보',left,40);
- ctx.font='13px sans-serif';ctx.fillText('타악기 리듬',left,65);
- ctx.strokeStyle='#333';ctx.lineWidth=1.2;
- for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(left,top+i*spacing);ctx.lineTo(right,top+i*spacing);ctx.stroke();}
- ctx.font='28px serif';ctx.fillStyle='#111';
- items.forEach(n=>{
-  if(n.type==='text'){ctx.font='18px sans-serif';ctx.fillText(n.value,n.x,n.y);ctx.font='28px serif';return;}
-  if(n.type==='rest'){ctx.fillText('𝄽',n.x-8,n.y+7);return;}
-  ctx.beginPath();ctx.ellipse(n.x,n.y,7,5,-.35,0,Math.PI*2);
-  ctx.fill();
-  ctx.beginPath();ctx.lineWidth=1.5;ctx.moveTo(n.x+6,n.y);ctx.lineTo(n.x+6,n.y-32);ctx.stroke();
-  if(n.type==='eighth'){
-   ctx.beginPath();ctx.moveTo(n.x+6,n.y-32);ctx.quadraticCurveTo(n.x+24,n.y-24,n.x+15,n.y-14);ctx.stroke();
+(() => {
+'use strict';
+
+const $ = id => document.getElementById(id);
+const file = $('file'), preview = $('preview'), status = $('status');
+const rows = $('rows');
+let img = null, notes = [], audio = null, stopRequested = false;
+
+const instruments = {
+  buk:{label:'북',gm:36,f:95},
+  janggu:{label:'장구',gm:38,f:150},
+  jing:{label:'징',gm:49,f:900},
+  kkwaeng:{label:'꽹과리',gm:56,f:1450},
+  wood:{label:'목탁',gm:76,f:550},
+  snare:{label:'스네어',gm:40,f:190},
+  hat:{label:'하이햇',gm:42,f:7000}
+};
+
+file.addEventListener('change', () => {
+  const f = file.files && file.files[0];
+  img = null;
+  notes = [];
+  render();
+  if (!f) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) {
+    status.textContent = 'JPG, PNG 또는 WebP 이미지 파일을 선택해 주세요.';
+    return;
   }
- });
-}
-function pos(e){
- const r=c.getBoundingClientRect();
- return {x:Math.max(left+12,Math.min(right-10,(e.clientX-r.left)*W/r.width)),
- y:Math.max(top-12,Math.min(top+4*spacing+12,(e.clientY-r.top)*H/r.height))};
-}
-c.addEventListener('pointerdown',e=>{
- const p=pos(e);history.push(JSON.stringify(items));
- let type=tool,value='';
- if(type==='text'){value=prompt('넣을 글자나 타악기 이름을 입력하세요');if(!value){history.pop();return;}}
- items.push({x:p.x,y:p.y,type,value});draw();
+  const url = URL.createObjectURL(f);
+  const next = new Image();
+  next.onload = () => {
+    img = next;
+    preview.src = url;
+    preview.hidden = false;
+    status.textContent = `이미지 준비 완료 (${next.naturalWidth} × ${next.naturalHeight}). 악보 인식 버튼을 눌러 주세요.`;
+  };
+  next.onerror = () => {
+    URL.revokeObjectURL(url);
+    status.textContent = '이미지를 읽지 못했습니다. 다른 이미지 파일을 선택해 주세요.';
+  };
+  next.src = url;
 });
-function undo(){if(history.length){items=JSON.parse(history.pop());draw();}}
-function save(){
- try{localStorage.setItem('gugak-score-v1',JSON.stringify({title:document.getElementById('title').value,items}));
- document.getElementById('status').textContent='이 기기의 브라우저에 저장했어요.';}
- catch(e){alert('저장 공간을 사용할 수 없습니다.');}
+
+function render() {
+  rows.replaceChildren();
+  if (!notes.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 5;
+    td.textContent = '인식 결과가 없습니다.';
+    tr.append(td);
+    rows.append(tr);
+    return;
+  }
+  notes.forEach((n, i) => {
+    const tr = document.createElement('tr');
+    const number = document.createElement('td');
+    number.textContent = i + 1;
+    tr.append(number);
+
+    const posCell = document.createElement('td');
+    const pos = document.createElement('input');
+    pos.type = 'number'; pos.min = '0'; pos.value = n.x;
+    pos.addEventListener('change', () => {
+      n.x = Math.max(0, Number(pos.value) || 0);
+    });
+    posCell.append(pos); tr.append(posCell);
+
+    const instCell = document.createElement('td');
+    const inst = document.createElement('select');
+    Object.entries(instruments).forEach(([key, val]) => {
+      const op = document.createElement('option');
+      op.value = key; op.textContent = val.label;
+      op.selected = n.inst === key;
+      inst.append(op);
+    });
+    inst.addEventListener('change', () => n.inst = inst.value);
+    instCell.append(inst); tr.append(instCell);
+
+    const durCell = document.createElement('td');
+    const dur = document.createElement('select');
+    [0.25,0.5,1,1.5,2,3,4].forEach(v => {
+      const op = document.createElement('option');
+      op.value = v; op.textContent = v;
+      op.selected = n.dur === v;
+      dur.append(op);
+    });
+    dur.addEventListener('change', () => n.dur = Number(dur.value));
+    durCell.append(dur); tr.append(durCell);
+
+    const delCell = document.createElement('td');
+    const del = document.createElement('button');
+    del.textContent = '삭제';
+    del.addEventListener('click', () => {
+      notes.splice(i, 1); render();
+    });
+    delCell.append(del); tr.append(delCell);
+    rows.append(tr);
+  });
 }
-function load(){
- const s=localStorage.getItem('gugak-score-v1');
- if(!s){alert('저장된 악보가 없습니다.');return;}
- const d=JSON.parse(s);document.getElementById('title').value=d.title;items=d.items;draw();
+
+function recognize(image) {
+  const maxW = 800, maxH = 1000;
+  const scale = Math.min(1, maxW / image.naturalWidth, maxH / image.naturalHeight);
+  const w = Math.max(1, Math.round(image.naturalWidth * scale));
+  const h = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
+  if (!ctx) throw new Error('이미지 분석 기능을 사용할 수 없습니다.');
+  ctx.drawImage(image, 0, 0, w, h);
+
+  const pixels = ctx.getImageData(0, 0, w, h).data;
+  const dark = new Uint8Array(w * h);
+  for (let p = 0, j = 0; p < pixels.length; p += 4, j++) {
+    const gray = .299 * pixels[p] + .587 * pixels[p+1] + .114 * pixels[p+2];
+    dark[j] = gray < 145 ? 1 : 0;
+  }
+
+  // 긴 가로선을 찾아 오선 후보를 추정합니다.
+  const lineYs = [];
+  for (let y = 0; y < h; y++) {
+    let count = 0;
+    const offset = y * w;
+    for (let x = 0; x < w; x++) count += dark[offset+x];
+    if (count > w * .30) lineYs.push(y);
+  }
+
+  const lines = [];
+  for (const y of lineYs) {
+    if (!lines.length || y - lines[lines.length-1] > 2) lines.push(y);
+    else lines[lines.length-1] = Math.round((lines[lines.length-1] + y) / 2);
+  }
+
+  const staffs = [];
+  for (let i = 0; i + 4 < lines.length; i++) {
+    const group = lines.slice(i, i+5);
+    const gaps = group.slice(1).map((v,j) => v-group[j]);
+    const avg = gaps.reduce((a,b) => a+b, 0) / 4;
+    if (avg >= 2 && avg <= 35 && gaps.every(v => Math.abs(v-avg) < avg*.65)) {
+      staffs.push({ys:group, space:avg});
+      i += 4;
+    }
+  }
+
+  // 오선 영역을 제외한 잉크 덩어리를 찾아 음표 후보로 사용합니다.
+  const visited = new Uint8Array(w*h);
+  const found = [];
+  const maxComponents = 12000;
+  let componentCount = 0;
+
+  for (let sy = 1; sy < h-1; sy++) {
+    for (let sx = 1; sx < w-1; sx++) {
+      const start = sy*w+sx;
+      if (!dark[start] || visited[start]) continue;
+      const stack = [start];
+      visited[start] = 1;
+      let minX=sx,maxX=sx,minY=sy,maxY=sy,area=0;
+
+      while (stack.length) {
+        const p = stack.pop();
+        const x = p % w, y = Math.floor(p/w);
+        area++;
+        minX=Math.min(minX,x); maxX=Math.max(maxX,x);
+        minY=Math.min(minY,y); maxY=Math.max(maxY,y);
+        for (let dy=-1; dy<=1; dy++) {
+          for (let dx=-1; dx<=1; dx++) {
+            if (!dx && !dy) continue;
+            const nx=x+dx, ny=y+dy, np=ny*w+nx;
+            if (nx>0 && nx<w-1 && ny>0 && ny<h-1 && dark[np] && !visited[np]) {
+              visited[np]=1; stack.push(np);
+            }
+          }
+        }
+      }
+
+      componentCount++;
+      if (componentCount > maxComponents) throw new Error('이미지에 작은 요소가 너무 많습니다. 이미지를 자르거나 해상도를 낮춰 주세요.');
+
+      const bw=maxX-minX+1, bh=maxY-minY+1;
+      if (area < 8 || bw < 4 || bh < 4 || bw > w*.08 || bh > h*.08) continue;
+
+      let staff = null;
+      for (const s of staffs) {
+        if ((minY+maxY)/2 >= s.ys[0]-s.space*1.5 &&
+            (minY+maxY)/2 <= s.ys[4]+s.space*1.5) {
+          staff=s; break;
+        }
+      }
+      if (staff) {
+        const ratio=bw/bh;
+        if (ratio < .55 || ratio > 2.5 || area < staff.space*staff.space*.08) continue;
+        found.push({x:Math.round(((minX+maxX)/2)/scale), inst:$('instrument').value, dur:1});
+      }
+    }
+  }
+
+  found.sort((a,b) => a.x-b.x);
+  const unique = [];
+  for (const n of found) {
+    if (!unique.some(v => Math.abs(v.x-n.x) < 10)) unique.push(n);
+  }
+  return unique;
 }
-function clearScore(){if(confirm('현재 악보를 비울까요?')){history.push(JSON.stringify(items));items=[];draw();}}
-function downloadPNG(){
- const a=document.createElement('a');a.download='국악타악기악보.png';a.href=c.toDataURL('image/png');a.click();
+
+$('recognize').addEventListener('click', () => {
+  if (!img || !img.complete || !img.naturalWidth) {
+    status.textContent = '먼저 이미지 파일을 선택하고 준비 완료 메시지가 나올 때까지 기다려 주세요.';
+    return;
+  }
+  const btn = $('recognize');
+  btn.disabled = true;
+  status.textContent = '악보를 분석하고 있습니다. 잠시 기다려 주세요.';
+  setTimeout(() => {
+    try {
+      notes = recognize(img);
+      render();
+      status.textContent = notes.length
+        ? `음표 후보 ${notes.length}개를 찾았습니다. 표에서 결과를 확인해 주세요.`
+        : '자동 인식에 실패했습니다. 악보가 선명한지 확인하거나 음표 추가 버튼으로 입력해 주세요.';
+    } catch (e) {
+      console.error(e);
+      status.textContent = '인식 오류: ' + (e.message || '알 수 없는 오류');
+    } finally {
+      btn.disabled = false;
+    }
+  }, 50);
+});
+
+$('add').addEventListener('click', () => {
+  notes.push({
+    x: notes.length ? notes[notes.length-1].x+50 : 0,
+    inst: $('instrument').value,
+    dur: 1
+  });
+  render();
+});
+
+function getAudio() {
+  if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+  return audio;
 }
-document.getElementById('title').addEventListener('input',draw);
-draw();
+
+function playHit(inst, when, dur) {
+  const a=getAudio(), osc=a.createOscillator(), gain=a.createGain();
+  const cfg=instruments[inst] || instruments.buk;
+  osc.type=['jing','kkwaeng','hat'].includes(inst) ? 'square' : 'triangle';
+  osc.frequency.setValueAtTime(cfg.f,when);
+  if (['buk','janggu'].includes(inst)) osc.frequency.exponentialRampToValueAtTime(42,when+.13);
+  osc.connect(gain); gain.connect(a.destination);
+  gain.gain.setValueAtTime(.0001,when);
+  gain.gain.exponentialRampToValueAtTime(['jing','kkwaeng'].includes(inst)?.16:.5,when+.008);
+  gain.gain.exponentialRampToValueAtTime(.0001,when+Math.max(.07,Math.min(.7,dur*.18)));
+  osc.start(when); osc.stop(when+1);
+}
+
+$('play').addEventListener('click', async () => {
+  if (!notes.length) { status.textContent='먼저 악보를 인식하거나 음표를 추가하세요.'; return; }
+  try {
+    const a=getAudio(); await a.resume();
+    stopRequested=false;
+    const bpm=Math.max(30,Math.min(240,Number($('tempo').value)||100));
+    const sorted=[...notes].sort((a,b)=>a.x-b.x);
+    let t=a.currentTime+.08, prev=sorted[0].x;
+    sorted.forEach((n,i) => {
+      if (stopRequested) return;
+      if (i) t+=Math.max(.08,Math.min(2,((n.x-prev)/50)*(60/bpm)));
+      playHit(n.inst,t,n.dur); prev=n.x;
+    });
+    status.textContent='재생을 예약했습니다.';
+  } catch(e) {
+    status.textContent='재생 오류: '+(e.message||e);
+  }
+});
+
+$('stop').addEventListener('click', () => {
+  stopRequested=true;
+  if (audio) audio.suspend().then(()=>audio.resume()).catch(()=>{});
+  status.textContent='정지 요청을 보냈습니다.';
+});
+
+function vlq(v) {
+  const out=[v&127];
+  while ((v=Math.floor(v/128))>0) out.unshift((v&127)|128);
+  return out;
+}
+function saveBlob(blob,name) {
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+$('midi').addEventListener('click', () => {
+  if (!notes.length) { status.textContent='저장할 음표가 없습니다.'; return; }
+  try {
+    const bpm=Math.max(30,Math.min(240,Number($('tempo').value)||100));
+    const us=Math.round(60000000/bpm);
+    const events=[[0,[255,81,3,(us>>16)&255,(us>>8)&255,us&255]]];
+    [...notes].sort((a,b)=>a.x-b.x).forEach((n,i) => {
+      const tick=Math.max(i*120,Math.round(n.x/50*120));
+      const len=Math.max(30,Math.round(120*n.dur));
+      const gm=(instruments[n.inst]||instruments.buk).gm;
+      events.push([tick,[0x99,gm,100]],[tick+len,[0x89,gm,0]]);
+    });
+    events.sort((a,b)=>a[0]-b[0]);
+    const track=[]; let last=0;
+    for (const [tick,data] of events) {
+      track.push(...vlq(Math.max(0,tick-last)),...data);
+      last=tick;
+    }
+    track.push(0,255,47,0);
+    const len=track.length;
+    const header=[77,84,104,100,0,0,0,6,0,0,0,1,1,224,77,84,114,107,
+      (len>>>24)&255,(len>>>16)&255,(len>>>8)&255,len&255,...track];
+    saveBlob(new Blob([new Uint8Array(header)],{type:'audio/midi'}),'gugak-score.mid');
+    status.textContent='MIDI 파일을 생성했습니다.';
+  } catch(e) {
+    status.textContent='MIDI 저장 오류: '+(e.message||e);
+  }
+});
+
+})();
 </script>
 </body>
 </html>

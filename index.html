@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>국악 타악기 악보실</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f3ed;color:#222;font-family:system-ui,sans-serif}
+header{background:#253d35;color:white;padding:18px}
+h1{font-size:22px;margin:0}
+p{font-size:13px}
+main{padding:14px;max-width:900px;margin:auto}
+input,button{font:inherit;border-radius:9px;padding:10px;border:1px solid #ccc}
+input{width:100%;margin:8px 0 12px}
+.tools{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+button{background:white;color:#222}
+button:active{background:#d9e8dc}
+.primary{background:#253d35;color:white}
+#paper{background:white;border:1px solid #ddd;border-radius:10px;overflow:hidden}
+canvas{width:100%;display:block;touch-action:manipulation}
+.small{font-size:12px;color:#666}
+</style>
+</head>
+<body>
+<header><h1>국악 타악기 악보실</h1><p>오선보 타악 리듬 편집 · 내 기기에 저장</p></header>
+<main>
+<label for="title">악보 제목</label>
+<input id="title" value="새 국악 타악기 악보">
+<div class="tools">
+<button onclick="choose('quarter')">● 4분음표</button>
+<button onclick="choose('eighth')">♪ 8분음표</button>
+<button onclick="choose('rest')">𝄽 쉼표</button>
+<button onclick="choose('text')">가나다 글자</button>
+<button onclick="undo()">↶ 실행 취소</button>
+</div>
+<p class="small">기호를 선택하고 오선보를 누르면 입력됩니다. 글자 모드는 입력할 글자를 물어봅니다.</p>
+<div id="paper"><canvas id="score"></canvas></div>
+<div class="tools">
+<button class="primary" onclick="save()">기기에 저장</button>
+<button onclick="load()">저장한 악보 열기</button>
+<button onclick="downloadPNG()">PNG 이미지 저장</button>
+<button onclick="clearScore()">새 악보</button>
+</div>
+<p id="status" class="small">악보를 편집해 보세요.</p>
+</main>
+<script>
+const c=document.getElementById('score'),ctx=c.getContext('2d');
+let items=[],history=[],tool='quarter';
+const W=900,H=310,left=55,right=850,top=100,spacing=14;
+function choose(t){tool=t;document.getElementById('status').textContent=
+({'quarter':'4분음표 선택','eighth':'8분음표 선택','rest':'쉼표 선택','text':'글자 입력 선택'})[t];}
+function draw(){
+ c.width=W*2;c.height=H*2;
+ ctx.setTransform(2,0,0,2,0,0);ctx.fillStyle='white';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#222';ctx.font='bold 22px sans-serif';
+ ctx.fillText(document.getElementById('title').value||'국악 타악기 악보',left,40);
+ ctx.font='13px sans-serif';ctx.fillText('타악기 리듬',left,65);
+ ctx.strokeStyle='#333';ctx.lineWidth=1.2;
+ for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(left,top+i*spacing);ctx.lineTo(right,top+i*spacing);ctx.stroke();}
+ ctx.font='28px serif';ctx.fillStyle='#111';
+ items.forEach(n=>{
+  if(n.type==='text'){ctx.font='18px sans-serif';ctx.fillText(n.value,n.x,n.y);ctx.font='28px serif';return;}
+  if(n.type==='rest'){ctx.fillText('𝄽',n.x-8,n.y+7);return;}
+  ctx.beginPath();ctx.ellipse(n.x,n.y,7,5,-.35,0,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();ctx.lineWidth=1.5;ctx.moveTo(n.x+6,n.y);ctx.lineTo(n.x+6,n.y-32);ctx.stroke();
+  if(n.type==='eighth'){
+   ctx.beginPath();ctx.moveTo(n.x+6,n.y-32);ctx.quadraticCurveTo(n.x+24,n.y-24,n.x+15,n.y-14);ctx.stroke();
+  }
+ });
+}
+function pos(e){
+ const r=c.getBoundingClientRect();
+ return {x:Math.max(left+12,Math.min(right-10,(e.clientX-r.left)*W/r.width)),
+ y:Math.max(top-12,Math.min(top+4*spacing+12,(e.clientY-r.top)*H/r.height))};
+}
+c.addEventListener('pointerdown',e=>{
+ const p=pos(e);history.push(JSON.stringify(items));
+ let type=tool,value='';
+ if(type==='text'){value=prompt('넣을 글자나 타악기 이름을 입력하세요');if(!value){history.pop();return;}}
+ items.push({x:p.x,y:p.y,type,value});draw();
+});
+function undo(){if(history.length){items=JSON.parse(history.pop());draw();}}
+function save(){
+ try{localStorage.setItem('gugak-score-v1',JSON.stringify({title:document.getElementById('title').value,items}));
+ document.getElementById('status').textContent='이 기기의 브라우저에 저장했어요.';}
+ catch(e){alert('저장 공간을 사용할 수 없습니다.');}
+}
+function load(){
+ const s=localStorage.getItem('gugak-score-v1');
+ if(!s){alert('저장된 악보가 없습니다.');return;}
+ const d=JSON.parse(s);document.getElementById('title').value=d.title;items=d.items;draw();
+}
+function clearScore(){if(confirm('현재 악보를 비울까요?')){history.push(JSON.stringify(items));items=[];draw();}}
+function downloadPNG(){
+ const a=document.createElement('a');a.download='국악타악기악보.png';a.href=c.toDataURL('image/png');a.click();
+}
+document.getElementById('title').addEventListener('input',draw);
+draw();
+</script>
+</body>
+</html>
